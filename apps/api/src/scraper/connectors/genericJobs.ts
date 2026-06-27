@@ -2,6 +2,8 @@ import { config } from "../../config.js";
 import type { Connector, NormalizedItem } from "./types.js";
 import { asNumber, asRecord, asString, fetchJsonWithTimeout, parseDate } from "./helpers.js";
 
+const hackerEarthIndiaJobsUrl = "https://www.hackerearth.com/api/community/job/opportunities/?page=1&size=25&country=IN";
+
 function findRows(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
   const root = asRecord(payload);
@@ -171,11 +173,17 @@ async function fetchRows(endpoint: string, label: string) {
     return [];
   }
 
+  const headers: Record<string, string> = {
+    Accept: "application/json,text/plain,*/*",
+    "Accept-Language": "en-IN,en;q=0.9",
+    "User-Agent": config.unstopUserAgent
+  };
+  if (label.includes("HackerEarth")) {
+    headers.Referer = "https://www.hackerearth.com/jobs/";
+  }
+
   const payload = await fetchJsonWithTimeout(endpoint, {
-    headers: {
-      Accept: "application/json,text/plain,*/*",
-      "User-Agent": config.unstopUserAgent
-    }
+    headers
   });
   return findRows(payload);
 }
@@ -288,10 +296,18 @@ hackerEarthJobsConnector.pruneMissing = true;
 
 hackerEarthJobsConnector.fetchItems = async () => {
   const jobRows = await fetchRows(config.hackerEarthJobsUrl, "HackerEarth Jobs");
-
-  return jobRows
+  let jobs = jobRows
     .map((row) => normalizeHackerEarthJob(row))
     .filter((job): job is NormalizedItem => Boolean(job));
+
+  if (jobs.length === 0 && config.hackerEarthJobsUrl !== hackerEarthIndiaJobsUrl) {
+    const indiaRows = await fetchRows(hackerEarthIndiaJobsUrl, "HackerEarth Jobs India");
+    jobs = indiaRows
+      .map((row) => normalizeHackerEarthJob(row))
+      .filter((job): job is NormalizedItem => Boolean(job));
+  }
+
+  return jobs;
 };
 
 export const hackerEarthChallengesConnector: Connector = {

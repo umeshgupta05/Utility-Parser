@@ -515,7 +515,6 @@ function DeparturesHeader({
   health,
   lastSynced,
   newCount,
-  onClearNew,
   onLogin,
   onLogout,
   onRefresh,
@@ -534,7 +533,6 @@ function DeparturesHeader({
   health: Health | null;
   lastSynced: string;
   newCount: number;
-  onClearNew: () => void;
   onLogin: (email: string) => void;
   onLogout: () => void;
   onRefresh: () => void;
@@ -565,11 +563,6 @@ function DeparturesHeader({
           <span>{String(newCount).padStart(2, "0")}</span>
           <small>NEW</small>
         </div>
-        {newCount > 0 ? (
-          <button className="clearNewButton" type="button" onClick={onClearNew}>
-            Clear
-          </button>
-        ) : null}
         <div className="syncTicker">
           <span>{lastSynced}</span>
           {syncFailed ? (
@@ -822,8 +815,6 @@ export function App() {
   const [contests, setContests] = useState<Contest[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
   const [health, setHealth] = useState<Health | null>(null);
-  const [jobNewCount, setJobNewCount] = useState(0);
-  const [contestNewCount, setContestNewCount] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("newest");
@@ -877,15 +868,11 @@ export function App() {
   };
 
   const loadStatus = async () => {
-    const [healthData, newJobs, newContests, sourceData] = await Promise.all([
+    const [healthData, sourceData] = await Promise.all([
       getJson<Health>("/api/health"),
-      getJson<{ count: number }>("/api/jobs/new"),
-      getJson<{ count: number }>("/api/contests/new"),
       getJson<{ data: Source[] }>("/api/sources")
     ]);
     setHealth(healthData);
-    setJobNewCount(newJobs.count);
-    setContestNewCount(newContests.count);
     setSources(sourceData.data);
   };
 
@@ -922,30 +909,6 @@ export function App() {
   const loadContests = async () => {
     const data = await getJson<ContestsResponse>("/api/contests?page=1&limit=100&sortBy=start_asc");
     setContests(data.data);
-  };
-
-  const clearNewItems = async () => {
-    const jobIds = jobs.filter((job) => job.isNew).map((job) => job.id);
-    const contestIds = contests.filter((contest) => contest.isNew).map((contest) => contest.id);
-
-    await Promise.all([
-      jobIds.length > 0
-        ? fetch(`${API_BASE}/api/jobs/mark-seen`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: jobIds })
-          })
-        : Promise.resolve(),
-      contestIds.length > 0
-        ? fetch(`${API_BASE}/api/contests/mark-seen`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: contestIds })
-          })
-        : Promise.resolve()
-    ]);
-
-    await Promise.all([loadJobs(), loadContests(), loadStatus()]);
   };
 
   const refreshAll = async (showRefreshing = false) => {
@@ -1128,7 +1091,13 @@ export function App() {
     });
   }, [contests, debouncedSearch, jobs, selectedSourceId, viewMode]);
 
-  const newCount = jobNewCount + contestNewCount;
+  const newCount = useMemo(
+    () => sources.reduce((total, source) => {
+      const run = source.lastRun;
+      return run && displayRunStatus(run.status) === "SUCCESS" ? total + run.jobsInserted : total;
+    }, 0),
+    [sources]
+  );
   const gridClassName = `grid cardSize-${displaySettings.size} displayStyle-${displaySettings.style}`;
 
   if (showLoginPage && !currentUser) {
@@ -1155,9 +1124,6 @@ export function App() {
         health={health}
         lastSynced={lastSynced}
         newCount={newCount}
-        onClearNew={() => {
-          clearNewItems().catch((err) => setError(err instanceof Error ? err.message : "Could not clear new items"));
-        }}
         onLogin={loginWithEmail}
         onLogout={logout}
         onRefresh={() => refreshAll(true)}

@@ -49,7 +49,7 @@ export const config = {
   myCareerNetBaseUrl: process.env.MYCAREERNET_BASE_URL || "https://mycareernet.co",
   hackerEarthJobsUrl:
     process.env.HACKEREARTH_JOBS_URL ||
-    "https://www.hackerearth.com/api/community/job/opportunities/?page=1&size=25",
+    "https://www.hackerearth.com/api/community/job/opportunities/?page=1&size=25&country=IN",
   hackerEarthChallengesUrl:
     process.env.HACKEREARTH_CHALLENGES_URL ||
     "https://www.hackerearth.com/api/community/challenges/compete/"
