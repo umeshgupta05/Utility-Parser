@@ -20,5 +20,6 @@ export interface Connector {
   sourceId: string;
   label: string;
   kind: ConnectorKind;
+  pruneMissing?: boolean;
   fetchItems(): Promise<NormalizedItem[]>;
 }

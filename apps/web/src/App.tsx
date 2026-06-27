@@ -247,6 +247,7 @@ function formatSiteLabel(site: string) {
     atcoder: "AtCoder",
     codechef: "CodeChef",
     codeforces: "Codeforces",
+    hackerearth_challenges: "HackerEarth Challenges",
     leetcode: "LeetCode",
     unstop_featured: "Unstop Featured"
   };

@@ -69,6 +69,29 @@ async function upsertContest(item: NormalizedItem) {
   return false;
 }
 
+async function pruneMissingItems(connector: Connector, items: NormalizedItem[]) {
+  if (!connector.pruneMissing || items.length === 0) return 0;
+  const ids = items.map((item) => item.id);
+
+  if (connector.kind === "JOB") {
+    const result = await prisma.job.deleteMany({
+      where: {
+        sourceId: connector.sourceId,
+        id: { notIn: ids }
+      }
+    });
+    return result.count;
+  }
+
+  const result = await prisma.contest.deleteMany({
+    where: {
+      site: connector.sourceId,
+      id: { notIn: ids }
+    }
+  });
+  return result.count;
+}
+
 export async function runConnector(connector: Connector): Promise<ConnectorRunResult> {
   const source = await prisma.source.findUnique({ where: { id: connector.sourceId } });
   if (source && !source.enabled) {
@@ -79,6 +102,7 @@ export async function runConnector(connector: Connector): Promise<ConnectorRunRe
 
   try {
     const items = await connector.fetchItems();
+    const prunedCount = await pruneMissingItems(connector, items);
     const insertedItems: NormalizedItem[] = [];
 
     for (const item of items) {
@@ -112,7 +136,9 @@ export async function runConnector(connector: Connector): Promise<ConnectorRunRe
       });
     }
 
-    console.log(`${connector.sourceId}: ${items.length} found, ${insertedItems.length} inserted`);
+    console.log(
+      `${connector.sourceId}: ${items.length} found, ${insertedItems.length} inserted, ${prunedCount} pruned`
+    );
 
     return {
       sourceId: connector.sourceId,

@@ -4,6 +4,7 @@ const sources = [
   ["unstop", "Unstop", "JOB"],
   ["mycareernet", "MyCareerNet", "JOB"],
   ["hackerearth_jobs", "HackerEarth Jobs", "JOB"],
+  ["hackerearth_challenges", "HackerEarth Challenges", "CONTEST"],
   ["unstop_featured", "Unstop Featured", "CONTEST"],
   ["codeforces", "Codeforces", "CONTEST"],
   ["leetcode", "LeetCode", "CONTEST"],

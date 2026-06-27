@@ -3,7 +3,11 @@ import { runScraper } from "./scraper/unstop.js";
 import { atCoderConnector } from "./scraper/connectors/atcoder.js";
 import { codeChefConnector } from "./scraper/connectors/codechef.js";
 import { codeforcesConnector } from "./scraper/connectors/codeforces.js";
-import { hackerEarthJobsConnector, myCareerNetConnector } from "./scraper/connectors/genericJobs.js";
+import {
+  hackerEarthChallengesConnector,
+  hackerEarthJobsConnector,
+  myCareerNetConnector
+} from "./scraper/connectors/genericJobs.js";
 import { leetcodeConnector } from "./scraper/connectors/leetcode.js";
 import { unstopFeaturedConnector } from "./scraper/connectors/unstopFeatured.js";
 import { runConnector } from "./scraper/runConnector.js";
@@ -14,6 +18,7 @@ const jitterMs = () => (120_000 + Math.floor(Math.random() * 60_000));
 const startupConnectors: Array<[string, Connector]> = [
   ["mycareernet jobs", myCareerNetConnector],
   ["hackerearth jobs", hackerEarthJobsConnector],
+  ["hackerearth challenges", hackerEarthChallengesConnector],
   ["codeforces contests", codeforcesConnector],
   ["leetcode contests", leetcodeConnector],
   ["codechef contests", codeChefConnector],
@@ -90,6 +95,13 @@ export function startScheduler() {
     timezone: "Asia/Kolkata"
   });
   cron.schedule("12 0-7 * * *", () => scheduleConnector("hackerearth jobs", hackerEarthJobsConnector), {
+    timezone: "Asia/Kolkata"
+  });
+
+  cron.schedule("14,44 8-23 * * *", () => scheduleConnector("hackerearth challenges", hackerEarthChallengesConnector), {
+    timezone: "Asia/Kolkata"
+  });
+  cron.schedule("14 0-7 * * *", () => scheduleConnector("hackerearth challenges", hackerEarthChallengesConnector), {
     timezone: "Asia/Kolkata"
   });
 

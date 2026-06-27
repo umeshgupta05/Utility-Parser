@@ -3,7 +3,11 @@ import { runScraper } from "../scraper/unstop.js";
 import { atCoderConnector } from "../scraper/connectors/atcoder.js";
 import { codeChefConnector } from "../scraper/connectors/codechef.js";
 import { codeforcesConnector } from "../scraper/connectors/codeforces.js";
-import { hackerEarthJobsConnector, myCareerNetConnector } from "../scraper/connectors/genericJobs.js";
+import {
+  hackerEarthChallengesConnector,
+  hackerEarthJobsConnector,
+  myCareerNetConnector
+} from "../scraper/connectors/genericJobs.js";
 import { leetcodeConnector } from "../scraper/connectors/leetcode.js";
 import { unstopFeaturedConnector } from "../scraper/connectors/unstopFeatured.js";
 import { runConnector } from "../scraper/runConnector.js";
@@ -15,6 +19,7 @@ const connectors = {
   atcoder: atCoderConnector,
   mycareernet: myCareerNetConnector,
   hackerearth_jobs: hackerEarthJobsConnector,
+  hackerearth_challenges: hackerEarthChallengesConnector,
   unstop_featured: unstopFeaturedConnector
 };
 

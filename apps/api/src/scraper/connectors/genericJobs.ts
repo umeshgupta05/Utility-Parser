@@ -64,18 +64,16 @@ function normalizeHackerEarthChallenge(row: unknown): NormalizedItem | null {
   const status = challengeStatus(start, end);
 
   return {
-    id: `hackerearth_jobs:challenge:${slug}`,
+    id: `hackerearth_challenges:${slug}`,
     title,
     url: url.startsWith("http") ? url : `https://www.hackerearth.com${url}`,
-    company: asString(record.company_name) ?? "HackerEarth",
-    location: "Online",
-    jobType: `Challenge: ${type}`,
-    timing: status,
-    postedAt: start,
-    deadline: end,
+    site: "hackerearth_challenges",
+    startTime: start ?? new Date(),
+    durationSec: start && end ? Math.max(0, Math.round((end.getTime() - start.getTime()) / 1000)) : 0,
     raw: {
       ...record,
       normalized_kind: "hackerearth_challenge",
+      normalized_type: type,
       normalized_status: status
     }
   };
@@ -276,19 +274,25 @@ export const hackerEarthJobsConnector = jsonJobConnector(
   "HackerEarth"
 );
 
-hackerEarthJobsConnector.fetchItems = async () => {
-  const [jobRows, challengeRows] = await Promise.all([
-    fetchRows(config.hackerEarthJobsUrl, "HackerEarth Jobs"),
-    fetchRows(config.hackerEarthChallengesUrl, "HackerEarth Challenges")
-  ]);
+hackerEarthJobsConnector.pruneMissing = true;
 
-  const jobs = jobRows
+hackerEarthJobsConnector.fetchItems = async () => {
+  const jobRows = await fetchRows(config.hackerEarthJobsUrl, "HackerEarth Jobs");
+
+  return jobRows
     .map((row) => normalizeJob(row, "hackerearth_jobs", "HackerEarth"))
     .filter((job): job is NormalizedItem => Boolean(job));
+};
 
-  const challenges = challengeRows
-    .map((row) => normalizeHackerEarthChallenge(row))
-    .filter((job): job is NormalizedItem => Boolean(job));
-
-  return [...jobs, ...challenges];
+export const hackerEarthChallengesConnector: Connector = {
+  sourceId: "hackerearth_challenges",
+  label: "HackerEarth Challenges",
+  kind: "CONTEST",
+  pruneMissing: true,
+  async fetchItems() {
+    const challengeRows = await fetchRows(config.hackerEarthChallengesUrl, "HackerEarth Challenges");
+    return challengeRows
+      .map((row) => normalizeHackerEarthChallenge(row))
+      .filter((contest): contest is NormalizedItem => Boolean(contest));
+  }
 };
