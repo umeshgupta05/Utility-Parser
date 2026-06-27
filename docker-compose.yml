@@ -1,0 +1,22 @@
+services:
+  opportunity-departures:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: file:/data/dev.db
+      WEB_DIST_PATH: /app/apps/web/dist
+      CORS_ORIGIN: "true"
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:4000}
+      COOKIE_SECRET: ${COOKIE_SECRET:-replace-this-with-a-long-random-secret}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-Opportunity Departures <onboarding@resend.dev>}
+      UNSTOP_USER_AGENT: ${UNSTOP_USER_AGENT:-UtilityParser-UnstopJobAgent/0.1 (+personal job search; deployment)}
+    volumes:
+      - opportunity_data:/data
+    restart: unless-stopped
+
+volumes:
+  opportunity_data:

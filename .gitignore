@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.*
+.env.local
+!.env.example
+!apps/api/.env.example
+*.log
+apps/api/prisma/dev.db
+apps/api/prisma/dev.db-journal
+apps/api/prisma/dev.db-wal
+apps/api/prisma/dev.db-shm
+apps/api/prisma/*.bak
+apps/web/tsconfig.tsbuildinfo
