@@ -10,8 +10,9 @@
     "start": "node dist/server.js",
     "scrape": "tsx src/scrape-once.ts",
     "db:generate": "prisma generate",
-    "db:migrate": "tsx src/db/init.ts && prisma generate",
-    "db:init": "tsx src/db/init.ts",
+    "db:migrate": "prisma db push && tsx src/db/init.ts && prisma generate",
+    "db:deploy": "prisma db push",
+    "db:init": "prisma db push && tsx src/db/init.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {

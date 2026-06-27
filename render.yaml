@@ -5,17 +5,13 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
-    disk:
-      name: opportunity-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 4000
       - key: DATABASE_URL
-        value: file:/data/dev.db
+        sync: false
       - key: WEB_DIST_PATH
         value: /app/apps/web/dist
       - key: CORS_ORIGIN
