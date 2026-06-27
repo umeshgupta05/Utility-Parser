@@ -4,6 +4,7 @@ const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 const isProduction = process.env.NODE_ENV === "production";
 const placeholderCookieSecret = "local-dev-cookie-secret-change-me";
 const cookieSecret = process.env.COOKIE_SECRET ?? (isProduction ? "" : placeholderCookieSecret);
+const appPublicUrl = process.env.APP_PUBLIC_URL ?? (isProduction ? "" : "http://localhost:5173");
 
 if (isProduction && !cookieSecret) {
   throw new Error("COOKIE_SECRET is required in production. Set it through your deployment environment or .env file.");
@@ -13,13 +14,17 @@ if (isProduction && cookieSecret === placeholderCookieSecret) {
   throw new Error("COOKIE_SECRET must be changed from the local development placeholder in production.");
 }
 
+if (isProduction && !appPublicUrl) {
+  throw new Error("APP_PUBLIC_URL is required in production for magic login links.");
+}
+
 export const TARGET_PAGE_URL =
   "https://unstop.com/job/in-office-software-development-jobs-for-freshers?job_type=in_office&job_timing=full_time&roles=software-development&usertype=fresher&oppstatus=open";
 
 export const config = {
   port: Number(process.env.PORT ?? 4000),
   corsOrigin: corsOrigin === "true" ? true : corsOrigin,
-  appPublicUrl: process.env.APP_PUBLIC_URL ?? "http://localhost:5173",
+  appPublicUrl,
   webDistPath: process.env.WEB_DIST_PATH ?? "",
   cookieSecret,
   resendApiKey: process.env.RESEND_API_KEY ?? "",

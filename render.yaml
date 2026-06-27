@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: opportunity-departures
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    disk:
+      name: opportunity-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        value: file:/data/dev.db
+      - key: WEB_DIST_PATH
+        value: /app/apps/web/dist
+      - key: CORS_ORIGIN
+        value: "true"
+      - key: APP_PUBLIC_URL
+        sync: false
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: UNSTOP_USER_AGENT
+        value: UtilityParser-UnstopJobAgent/0.1 (+personal job search; render)

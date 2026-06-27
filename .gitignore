@@ -3,9 +3,6 @@ dist/
 .env
 .env.*
 .env.local
-!.env.example
-!.env.production.example
-!apps/api/.env.example
 *.log
 apps/api/prisma/dev.db
 apps/api/prisma/dev.db-journal
