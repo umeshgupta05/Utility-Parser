@@ -53,7 +53,7 @@ function normalizeJob(row: unknown, sourceId: string, fallbackCompany: string): 
 function normalizeHackerEarthJob(row: unknown): NormalizedItem | null {
   const record = asRecord(row);
   const country = asString(record.country);
-  if (country?.toUpperCase() !== "IN") return null;
+  if (country && country.toUpperCase() !== "IN") return null;
 
   return normalizeJob(row, "hackerearth_jobs", "HackerEarth");
 }
@@ -214,9 +214,12 @@ async function fetchHackerEarthJobRows() {
       15_000
     );
 
-    const jobs = findRows(payload)
+    const allRows = findRows(payload);
+    const jobs = allRows
       .map((row) => normalizeHackerEarthJob(row))
       .filter((job): job is NormalizedItem => Boolean(job));
+
+    console.log(`hackerearth_jobs: endpoint=${endpoint} rawRows=${allRows.length} afterCountryFilter=${jobs.length}`);
 
     if (jobs.length > 0) return jobs;
   }

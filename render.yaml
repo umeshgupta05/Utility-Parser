@@ -2,6 +2,7 @@ services:
   - type: web
     name: opportunity-departures
     runtime: docker
+    region: singapore
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health

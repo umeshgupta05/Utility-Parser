@@ -70,7 +70,21 @@ async function upsertContest(item: NormalizedItem) {
 }
 
 async function pruneMissingItems(connector: Connector, items: NormalizedItem[]) {
-  if (!connector.pruneMissing || items.length === 0) return 0;
+  if (!connector.pruneMissing) return 0;
+  if (items.length === 0) return 0;
+
+  const existingCount =
+    connector.kind === "JOB"
+      ? await prisma.job.count({ where: { sourceId: connector.sourceId } })
+      : await prisma.contest.count({ where: { site: connector.sourceId } });
+
+  if (existingCount > 5 && items.length < existingCount * 0.3) {
+    console.warn(
+      `${connector.sourceId}: skipping prune - only ${items.length} of ${existingCount} existing rows returned, likely a partial fetch`
+    );
+    return 0;
+  }
+
   const ids = items.map((item) => item.id);
 
   if (connector.kind === "JOB") {
