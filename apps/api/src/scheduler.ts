@@ -11,6 +11,15 @@ import type { Connector } from "./scraper/connectors/types.js";
 import { sendDueContestReminders } from "./notifications/email.js";
 
 const jitterMs = () => (120_000 + Math.floor(Math.random() * 60_000));
+const startupConnectors: Array<[string, Connector]> = [
+  ["mycareernet jobs", myCareerNetConnector],
+  ["hackerearth jobs", hackerEarthJobsConnector],
+  ["codeforces contests", codeforcesConnector],
+  ["leetcode contests", leetcodeConnector],
+  ["codechef contests", codeChefConnector],
+  ["atcoder contests", atCoderConnector],
+  ["unstop featured", unstopFeaturedConnector]
+];
 
 function scheduleScrape(label: string) {
   const delay = jitterMs();
@@ -34,6 +43,24 @@ function scheduleConnector(label: string, connector: Connector) {
       console.error(`${label} failed:`, message);
     });
   }, delay);
+}
+
+function runStartupSync() {
+  setTimeout(() => {
+    runScraper().catch((error) => {
+      const message = error instanceof Error ? error.message : "Unknown scraper error";
+      console.error("startup unstop scrape failed:", message);
+    });
+  }, 8_000);
+
+  startupConnectors.forEach(([label, connector], index) => {
+    setTimeout(() => {
+      runConnector(connector).catch((error) => {
+        const message = error instanceof Error ? error.message : "Unknown connector error";
+        console.error(`startup ${label} failed:`, message);
+      });
+    }, 12_000 + index * 3_000);
+  });
 }
 
 export function startScheduler() {
@@ -90,4 +117,5 @@ export function startScheduler() {
   });
 
   console.log("Scraper scheduler started for Asia/Kolkata");
+  runStartupSync();
 }

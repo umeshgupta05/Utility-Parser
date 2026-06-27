@@ -6,11 +6,15 @@ export async function registerHealthRoutes(app: FastifyInstance) {
     const lastRun = await prisma.scrapeRun.findFirst({
       orderBy: { startedAt: "desc" }
     });
-    const jobCount = await prisma.job.count();
+    const [jobCount, contestCount] = await Promise.all([
+      prisma.job.count(),
+      prisma.contest.count()
+    ]);
 
     return {
       ok: !lastRun || lastRun.status !== "error",
       jobCount,
+      contestCount,
       lastRun
     };
   });
