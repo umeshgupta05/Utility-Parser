@@ -3,6 +3,12 @@ import type { Connector, NormalizedItem } from "./types.js";
 import { asNumber, asRecord, asString, fetchJsonWithTimeout, parseDate } from "./helpers.js";
 
 const hackerEarthIndiaJobsUrl = "https://www.hackerearth.com/api/community/job/opportunities/?page=1&size=25&country=IN";
+const hackerEarthJobUrls = [
+  hackerEarthIndiaJobsUrl,
+  "https://www.hackerearth.com/api/community/job/opportunities/?page=1&size=25&country=IN&location=India",
+  "https://www.hackerearth.com/api/community/job/opportunities/?country=IN&page=1&size=1",
+  "https://www.hackerearth.com/api/community/job/opportunities/?page=1&size=25&country=IN&currency=INR"
+];
 
 function findRows(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
@@ -186,6 +192,38 @@ async function fetchRows(endpoint: string, label: string) {
   return findRows(payload);
 }
 
+async function fetchHackerEarthJobRows() {
+  const endpoints = Array.from(new Set([config.hackerEarthJobsUrl, ...hackerEarthJobUrls].filter(Boolean)));
+
+  for (const endpoint of endpoints) {
+    const payload = await fetchJsonWithTimeout(
+      endpoint,
+      {
+        headers: {
+          Accept: "application/json,text/plain,*/*",
+          "Accept-Language": "en-IN,en;q=0.9",
+          Referer: "https://www.hackerearth.com/jobs/",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      },
+      15_000
+    );
+
+    const jobs = findRows(payload)
+      .map((row) => normalizeHackerEarthJob(row))
+      .filter((job): job is NormalizedItem => Boolean(job));
+
+    if (jobs.length > 0) return jobs;
+  }
+
+  return [];
+}
+
 async function postJson(endpoint: string, body: unknown, headers: Record<string, string> = {}) {
   return fetchJsonWithTimeout(
     endpoint,
@@ -293,19 +331,7 @@ export const hackerEarthJobsConnector = jsonJobConnector(
 hackerEarthJobsConnector.pruneMissing = true;
 
 hackerEarthJobsConnector.fetchItems = async () => {
-  const jobRows = await fetchRows(config.hackerEarthJobsUrl, "HackerEarth Jobs");
-  let jobs = jobRows
-    .map((row) => normalizeHackerEarthJob(row))
-    .filter((job): job is NormalizedItem => Boolean(job));
-
-  if (jobs.length === 0 && config.hackerEarthJobsUrl !== hackerEarthIndiaJobsUrl) {
-    const indiaRows = await fetchRows(hackerEarthIndiaJobsUrl, "HackerEarth Jobs India");
-    jobs = indiaRows
-      .map((row) => normalizeHackerEarthJob(row))
-      .filter((job): job is NormalizedItem => Boolean(job));
-  }
-
-  return jobs;
+  return fetchHackerEarthJobRows();
 };
 
 export const hackerEarthChallengesConnector: Connector = {
