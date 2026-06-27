@@ -42,6 +42,16 @@ function normalizeJob(row: unknown, sourceId: string, fallbackCompany: string): 
   };
 }
 
+function normalizeHackerEarthJob(row: unknown): NormalizedItem | null {
+  const record = asRecord(row);
+  const country = asString(record.country);
+  const url = asString(record.url) ?? asString(record.applyUrl) ?? asString(record.job_url) ?? asString(record.link);
+  if (country && country.toUpperCase() !== "IN") return null;
+  if (url && /(^|\/\/)(www\.)?indeed\.com\//i.test(url)) return null;
+
+  return normalizeJob(row, "hackerearth_jobs", "HackerEarth");
+}
+
 function challengeStatus(start: Date | null, end: Date | null) {
   const now = Date.now();
   if (start && start.getTime() > now) return "Upcoming";
@@ -280,7 +290,7 @@ hackerEarthJobsConnector.fetchItems = async () => {
   const jobRows = await fetchRows(config.hackerEarthJobsUrl, "HackerEarth Jobs");
 
   return jobRows
-    .map((row) => normalizeJob(row, "hackerearth_jobs", "HackerEarth"))
+    .map((row) => normalizeHackerEarthJob(row))
     .filter((job): job is NormalizedItem => Boolean(job));
 };
 

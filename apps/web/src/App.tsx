@@ -515,6 +515,7 @@ function DeparturesHeader({
   health,
   lastSynced,
   newCount,
+  onClearNew,
   onLogin,
   onLogout,
   onRefresh,
@@ -533,6 +534,7 @@ function DeparturesHeader({
   health: Health | null;
   lastSynced: string;
   newCount: number;
+  onClearNew: () => void;
   onLogin: (email: string) => void;
   onLogout: () => void;
   onRefresh: () => void;
@@ -563,6 +565,11 @@ function DeparturesHeader({
           <span>{String(newCount).padStart(2, "0")}</span>
           <small>NEW</small>
         </div>
+        {newCount > 0 ? (
+          <button className="clearNewButton" type="button" onClick={onClearNew}>
+            Clear
+          </button>
+        ) : null}
         <div className="syncTicker">
           <span>{lastSynced}</span>
           {syncFailed ? (
@@ -910,37 +917,35 @@ export function App() {
 
     const data = await getJson<JobsResponse>(`/api/jobs?${params.toString()}`);
     setJobs(data.data);
-    const visibleNewIds = data.data.filter((job) => job.isNew).map((job) => job.id);
-
-    if (visibleNewIds.length > 0) {
-      window.setTimeout(() => {
-        fetch(`${API_BASE}/api/jobs/mark-seen`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: visibleNewIds })
-        })
-          .then(() => loadStatus())
-          .catch(() => undefined);
-      }, 1200);
-    }
   };
 
   const loadContests = async () => {
     const data = await getJson<ContestsResponse>("/api/contests?page=1&limit=100&sortBy=start_asc");
     setContests(data.data);
-    const visibleNewIds = data.data.filter((contest) => contest.isNew).map((contest) => contest.id);
+  };
 
-    if (visibleNewIds.length > 0) {
-      window.setTimeout(() => {
-        fetch(`${API_BASE}/api/contests/mark-seen`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: visibleNewIds })
-        })
-          .then(() => loadStatus())
-          .catch(() => undefined);
-      }, 1200);
-    }
+  const clearNewItems = async () => {
+    const jobIds = jobs.filter((job) => job.isNew).map((job) => job.id);
+    const contestIds = contests.filter((contest) => contest.isNew).map((contest) => contest.id);
+
+    await Promise.all([
+      jobIds.length > 0
+        ? fetch(`${API_BASE}/api/jobs/mark-seen`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: jobIds })
+          })
+        : Promise.resolve(),
+      contestIds.length > 0
+        ? fetch(`${API_BASE}/api/contests/mark-seen`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: contestIds })
+          })
+        : Promise.resolve()
+    ]);
+
+    await Promise.all([loadJobs(), loadContests(), loadStatus()]);
   };
 
   const refreshAll = async (showRefreshing = false) => {
@@ -1150,6 +1155,9 @@ export function App() {
         health={health}
         lastSynced={lastSynced}
         newCount={newCount}
+        onClearNew={() => {
+          clearNewItems().catch((err) => setError(err instanceof Error ? err.message : "Could not clear new items"));
+        }}
         onLogin={loginWithEmail}
         onLogout={logout}
         onRefresh={() => refreshAll(true)}

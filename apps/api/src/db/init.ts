@@ -18,6 +18,13 @@ try {
     data: { sourceId: "unstop" }
   });
 
+  await prisma.job.deleteMany({
+    where: {
+      sourceId: "hackerearth_jobs",
+      applyUrl: { contains: "indeed.com" }
+    }
+  });
+
   for (const [id, label, type] of sources) {
     await prisma.source.upsert({
       where: { id },
