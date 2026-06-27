@@ -4,6 +4,14 @@ A self-hosted opportunity board for jobs, featured Unstop opportunities, and cod
 
 ## Docker Deployment
 
+Create a deployment env file first:
+
+```bash
+cp .env.production.example .env
+```
+
+Then set at least `COOKIE_SECRET` and `APP_PUBLIC_URL` in `.env`.
+
 ```bash
 docker compose up --build -d
 ```
@@ -15,7 +23,7 @@ The container serves both the Fastify API and the built React frontend. SQLite i
 Useful production environment variables:
 
 - `APP_PUBLIC_URL`: public URL used in magic login emails, for example `https://your-domain.com`.
-- `COOKIE_SECRET`: long random string for signed cookies.
+- `COOKIE_SECRET`: required long random string for signed cookies. It is intentionally not defaulted in Docker.
 - `RESEND_API_KEY`: optional, enables real email delivery through Resend.
 - `RESEND_FROM_EMAIL`: verified sender address for Resend.
 - `DATABASE_URL`: defaults to `file:/data/dev.db` in Docker.

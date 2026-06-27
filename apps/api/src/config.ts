@@ -1,6 +1,17 @@
 import "dotenv/config";
 
 const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
+const isProduction = process.env.NODE_ENV === "production";
+const placeholderCookieSecret = "local-dev-cookie-secret-change-me";
+const cookieSecret = process.env.COOKIE_SECRET ?? (isProduction ? "" : placeholderCookieSecret);
+
+if (isProduction && !cookieSecret) {
+  throw new Error("COOKIE_SECRET is required in production. Set it through your deployment environment or .env file.");
+}
+
+if (isProduction && cookieSecret === placeholderCookieSecret) {
+  throw new Error("COOKIE_SECRET must be changed from the local development placeholder in production.");
+}
 
 export const TARGET_PAGE_URL =
   "https://unstop.com/job/in-office-software-development-jobs-for-freshers?job_type=in_office&job_timing=full_time&roles=software-development&usertype=fresher&oppstatus=open";
@@ -10,7 +21,7 @@ export const config = {
   corsOrigin: corsOrigin === "true" ? true : corsOrigin,
   appPublicUrl: process.env.APP_PUBLIC_URL ?? "http://localhost:5173",
   webDistPath: process.env.WEB_DIST_PATH ?? "",
-  cookieSecret: process.env.COOKIE_SECRET ?? "local-dev-cookie-secret-change-me",
+  cookieSecret,
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "Opportunity Departures <onboarding@resend.dev>",
   unstopUserAgent:
