@@ -47,9 +47,7 @@ function normalizeJob(row: unknown, sourceId: string, fallbackCompany: string): 
 function normalizeHackerEarthJob(row: unknown): NormalizedItem | null {
   const record = asRecord(row);
   const country = asString(record.country);
-  const url = asString(record.url) ?? asString(record.applyUrl) ?? asString(record.job_url) ?? asString(record.link);
-  if (country && country.toUpperCase() !== "IN") return null;
-  if (url && /(^|\/\/)(www\.)?indeed\.com\//i.test(url)) return null;
+  if (country?.toUpperCase() !== "IN") return null;
 
   return normalizeJob(row, "hackerearth_jobs", "HackerEarth");
 }
