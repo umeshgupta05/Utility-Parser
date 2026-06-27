@@ -21,7 +21,7 @@ services:
       - key: CORS_ORIGIN
         value: "true"
       - key: APP_PUBLIC_URL
-        sync: false
+        value: https://opportunity-departures.onrender.com
       - key: COOKIE_SECRET
         generateValue: true
       - key: RESEND_API_KEY

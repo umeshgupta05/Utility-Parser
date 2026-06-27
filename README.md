@@ -9,8 +9,8 @@ This repo is ready for Render Blueprint deployment through `render.yaml`.
 1. Push the repo to GitHub.
 2. In Render, create a new Blueprint from this repository.
 3. Render will use the root `render.yaml`.
-4. Fill the prompted environment values:
-   - `APP_PUBLIC_URL`: your Render service URL or custom domain, for example `https://opportunity-departures.onrender.com`.
+4. `APP_PUBLIC_URL` is configured as `https://opportunity-departures.onrender.com`. Change it in `render.yaml` if you attach a custom domain.
+5. Fill the prompted environment values:
    - `RESEND_API_KEY`: optional, required for real email delivery.
    - `RESEND_FROM_EMAIL`: your verified Resend sender.
 
