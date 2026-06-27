@@ -2,16 +2,27 @@ name: Keep Render service awake
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
-  workflow_dispatch: {}
+    - cron: "7,17,27,37,47,57 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
-      - name: Ping health endpoint
+      - name: Ping Render health endpoint
         run: |
-          curl -sf "https://opportunity-departures.onrender.com/api/health" \
-            -o /dev/null \
-            -w "Health check: HTTP %{http_code}\n" \
-            || echo "Health check failed - service may be cold-starting, this is non-fatal"
+          curl --fail \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --retry-delay 15 \
+            --retry-all-errors \
+            --max-time 120 \
+            --output /dev/null \
+            --write-out "Health check: HTTP %{http_code}\n" \
+            "https://opportunity-departures.onrender.com/api/health"
