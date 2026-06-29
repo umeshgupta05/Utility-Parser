@@ -10,6 +10,11 @@
     "supabase:push": "supabase db push",
     "supabase:deploy": "supabase functions deploy unstop mycareernet hackerearth_jobs hackerearth_challenges codeforces leetcode codechef atcoder unstop_featured send-contest-reminders"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
   "devDependencies": {
     "typescript": "^5.9.3"
   }
