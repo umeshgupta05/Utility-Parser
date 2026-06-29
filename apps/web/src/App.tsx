@@ -1071,15 +1071,24 @@ export function App() {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    if (!code) return;
+    const queryParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const code = queryParams.get("code");
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+
+    if (!code && (!accessToken || !refreshToken)) return;
 
     const verifyLogin = async () => {
       try {
         setAuthLoading(true);
         setError(null);
-        const { error: verifyError } = await supabase.auth.exchangeCodeForSession(code);
+        const { error: verifyError } = code
+          ? await supabase.auth.exchangeCodeForSession(code)
+          : await supabase.auth.setSession({
+              access_token: accessToken!,
+              refresh_token: refreshToken!
+            });
         if (verifyError) throw verifyError;
         await loadUserState();
         setAuthMessage("Signed in");

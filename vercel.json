@@ -1,0 +1,12 @@
+{
+  "installCommand": "pnpm install --config.dangerously-allow-all-builds=true",
+  "buildCommand": "pnpm --filter @unstop-agent/web build",
+  "outputDirectory": "apps/web/dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
