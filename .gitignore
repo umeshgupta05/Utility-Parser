@@ -10,3 +10,4 @@ apps/api/prisma/dev.db-wal
 apps/api/prisma/dev.db-shm
 apps/api/prisma/*.bak
 apps/web/tsconfig.tsbuildinfo
+

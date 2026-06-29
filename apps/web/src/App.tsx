@@ -11,7 +11,7 @@ import {
   SlidersHorizontal,
   Sun
 } from "lucide-react";
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { supabase } from "./supabaseClient";
 
 type Job = {
@@ -129,6 +129,7 @@ type DisplaySettings = {
 };
 
 const NEW_COUNT_VISIBLE_MS = 5 * 60 * 1000;
+const CINEMATIC_SCRUB_END_PROGRESS = 0.86;
 
 type TicketItem =
   | {
@@ -139,6 +140,7 @@ type TicketItem =
       subtitle: string;
       url: string;
       isNew: boolean;
+      firstSeenAt: string;
       data: Array<{ label: string; value: string; alert?: boolean }>;
       route: string;
       action: string;
@@ -152,6 +154,7 @@ type TicketItem =
       subtitle: string;
       url: string;
       isNew: boolean;
+      firstSeenAt: string;
       data: Array<{ label: string; value: string; alert?: boolean }>;
       route: string;
       action: string;
@@ -567,6 +570,7 @@ function DeparturesHeader({
   lastSynced,
   newCount,
   onLogin,
+  onLoginNavigate,
   onLogout,
   onRefresh,
   onSearchChange,
@@ -585,6 +589,7 @@ function DeparturesHeader({
   lastSynced: string;
   newCount: number;
   onLogin: (email: string) => void;
+  onLoginNavigate: () => void;
   onLogout: () => void;
   onRefresh: () => void;
   onSearchChange: (value: string) => void;
@@ -626,13 +631,25 @@ function DeparturesHeader({
       </div>
 
       <div className="accountSlot">
-        <EmailLogin
-          currentUser={currentUser}
-          loading={authLoading}
-          message={authMessage}
-          onLogin={onLogin}
-          onLogout={onLogout}
-        />
+        {currentUser ? (
+          <EmailLogin
+            currentUser={currentUser}
+            loading={authLoading}
+            message={authMessage}
+            onLogin={onLogin}
+            onLogout={onLogout}
+          />
+        ) : (
+          <button
+            className="loginNotice"
+            type="button"
+            onClick={onLoginNavigate}
+          >
+            Login first to set reminders
+            <br />
+            and save notification preferences.
+          </button>
+        )}
       </div>
 
       <div className="controls">
@@ -826,6 +843,7 @@ function toJobTicket(job: Job): TicketItem {
     subtitle: job.company,
     url: job.applyUrl,
     isNew: job.isNew,
+    firstSeenAt: job.firstSeenAt,
     route: "JOB / SOFTWARE DEVELOPMENT",
     action: "Apply",
     data: [
@@ -848,6 +866,7 @@ function toContestTicket(contest: Contest): TicketItem {
     subtitle: siteLabel,
     url: contest.url,
     isNew: contest.isNew,
+    firstSeenAt: contest.firstSeenAt,
     startsAt: contest.startTime,
     route: "CONTEST / CODING PLATFORM",
     action: "Register",
@@ -859,6 +878,168 @@ function toContestTicket(contest: Contest): TicketItem {
       { label: "Status", value: status }
     ]
   };
+}
+
+function CinematicLanding({
+  currentUser,
+  onContinue,
+  onLogin
+}: {
+  currentUser: User | null;
+  onContinue: () => void;
+  onLogin: () => void;
+}) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoReady, setVideoReady] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const section = sectionRef.current;
+    if (!video || !section) return;
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobileQuery = window.matchMedia("(max-width: 760px)");
+    const isFallback = () => mediaQuery.matches || mobileQuery.matches;
+    let frame = 0;
+
+    const syncVideoToScroll = () => {
+      if (isFallback() || !video.duration) return;
+
+      const rect = section.getBoundingClientRect();
+      const scrollable = Math.max(1, rect.height - window.innerHeight);
+      const progress = Math.min(1, Math.max(0, -rect.top / scrollable));
+      const videoProgress = Math.min(1, progress / CINEMATIC_SCRUB_END_PROGRESS);
+
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        video.pause();
+        return;
+      }
+
+      video.pause();
+      video.currentTime = videoProgress * video.duration;
+    };
+
+    const requestSync = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(syncVideoToScroll);
+    };
+
+    const configurePlayback = () => {
+      if (isFallback()) {
+        video.currentTime = 0;
+        void video.play().catch(() => undefined);
+        return;
+      }
+
+      video.pause();
+      requestSync();
+    };
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          configurePlayback();
+          return;
+        }
+
+        video.pause();
+      },
+      { threshold: 0.05 }
+    );
+
+    observer.observe(section);
+    configurePlayback();
+    video.addEventListener("loadedmetadata", requestSync);
+    window.addEventListener("scroll", requestSync, { passive: true });
+    window.addEventListener("resize", configurePlayback);
+    mediaQuery.addEventListener("change", configurePlayback);
+    mobileQuery.addEventListener("change", configurePlayback);
+
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+      video.removeEventListener("loadedmetadata", requestSync);
+      window.removeEventListener("scroll", requestSync);
+      window.removeEventListener("resize", configurePlayback);
+      mediaQuery.removeEventListener("change", configurePlayback);
+      mobileQuery.removeEventListener("change", configurePlayback);
+    };
+  }, []);
+
+  return (
+    <>
+      <section className="cinematicLanding" ref={sectionRef} aria-label="Opportunity Departures introduction">
+        <div className="cinematicSticky">
+          <div className="cinematicFrame">
+            {!videoReady ? (
+              <div className="videoPoster" aria-hidden="true">
+                <span>OPPORTUNITY DEPARTURES</span>
+              </div>
+            ) : null}
+            <video
+              aria-label="Cinematic preview of Opportunity Departures"
+              className={videoReady ? "heroVideo ready" : "heroVideo"}
+              muted
+              playsInline
+              preload="metadata"
+              ref={videoRef}
+              onCanPlay={() => setVideoReady(true)}
+            >
+              <source src="/Create_a_premium_cinematic_D.mp4" type="video/mp4" />
+            </video>
+          </div>
+
+          <div className="sceneCopy sceneCopyIntro">
+            <h1>Opportunity Departures</h1>
+            <p>Jobs and coding contests arrive like routes on a departures board, then settle into ticket-style cards.</p>
+          </div>
+
+          <div className="sceneCopy sceneCopySources">
+            <span>AUTOMATIC SOURCES</span>
+            <p>Supabase cron jobs collect Unstop, HackerEarth, MyCareerNet, CodeChef, AtCoder, LeetCode, and Codeforces updates.</p>
+          </div>
+
+          <div className="sceneCopy sceneCopyActions">
+            <span>READY TO ACT</span>
+            <p>Filter the board, share a ticket, open Apply or Register, and set reminders before contests start.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="landingExplainer" aria-label="What Opportunity Departures does">
+        <div>
+          <span>WHY IT MATTERS</span>
+          <h2>One board for scattered opportunities.</h2>
+          <p>Instead of checking every platform manually, the app keeps a synced board of jobs, featured opportunities, and coding contests.</p>
+        </div>
+        <div>
+          <span>CONTROL</span>
+          <h2>Filters, layouts, and sharing stay close.</h2>
+          <p>Switch between jobs, contests, and all sources. Choose a display style, share useful cards, and keep the board tidy.</p>
+        </div>
+        <div>
+          <span>REMINDERS</span>
+          <h2>Contest alerts use verified email.</h2>
+          <p>Login with email before enabling reminders, then the scheduled reminder worker sends alerts near contest start time.</p>
+        </div>
+      </section>
+
+      <section className="landingCta" aria-label="Get started">
+        <span>{currentUser ? "SIGNED IN" : "GET STARTED"}</span>
+        <h2>{currentUser ? "Your departures board is ready." : "Login once, then set reminders."}</h2>
+        <p>Open the live dashboard to browse current jobs and contests. Login is only required for reminders and saved notification preferences.</p>
+        <div className="landingActions">
+          <button type="button" onClick={currentUser ? onContinue : onLogin}>
+            {currentUser ? "Go to dashboard" : "Login / Get started"}
+          </button>
+          <button className="secondaryAction" type="button" onClick={onContinue}>
+            Continue without login
+          </button>
+        </div>
+      </section>
+    </>
+  );
 }
 
 export function App() {
@@ -884,7 +1065,7 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
-  const [showLoginPage, setShowLoginPage] = useState(() => window.location.pathname === "/login");
+  const [route, setRoute] = useState(() => window.location.pathname);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -936,25 +1117,31 @@ export function App() {
     });
   }, [sources]);
 
+  const navigateTo = (nextRoute: string) => {
+    setRoute(nextRoute);
+    if (window.location.pathname !== nextRoute) {
+      window.history.pushState({}, "", nextRoute);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   useEffect(() => {
-    const onPopState = () => setShowLoginPage(window.location.pathname === "/login");
+    const onPopState = () => setRoute(window.location.pathname);
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   const goToLogin = (message = "Login first to use notifications.") => {
     setAuthMessage(message);
-    setShowLoginPage(true);
-    if (window.location.pathname !== "/login") {
-      window.history.pushState({}, "", "/login");
-    }
+    navigateTo("/login");
   };
 
   const returnToBoard = () => {
-    setShowLoginPage(false);
-    if (window.location.pathname !== "/") {
-      window.history.pushState({}, "", "/");
-    }
+    navigateTo("/dashboard");
+  };
+
+  const continueToDashboard = () => {
+    navigateTo("/dashboard");
   };
 
   const loadStatus = async () => {
@@ -1136,8 +1323,8 @@ export function App() {
         if (verifyError) throw verifyError;
         await loadUserState();
         setAuthMessage("Signed in");
-        setShowLoginPage(false);
-        window.history.replaceState({}, "", "/");
+        setRoute("/dashboard");
+        window.history.replaceState({}, "", "/dashboard");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Login verification failed");
       } finally {
@@ -1230,14 +1417,53 @@ export function App() {
   const tickets = useMemo(() => {
     const jobTickets = viewMode === "contests" ? [] : jobs.map(toJobTicket);
     const contestTickets = viewMode === "jobs" ? [] : contests.map(toContestTicket);
+    const allItems = [...jobTickets, ...contestTickets];
     const query = debouncedSearch.toLowerCase();
 
-    return [...jobTickets, ...contestTickets].filter((item) => {
-      const matchesSearch = !query || `${item.title} ${item.subtitle}`.toLowerCase().includes(query);
-      const matchesSource = !selectedSourceId || item.sourceId === selectedSourceId;
-      return matchesSearch && matchesSource;
-    });
-  }, [contests, debouncedSearch, jobs, selectedSourceId, viewMode]);
+    // For each source, only the most recent N items (where N = jobsInserted
+    // from the latest successful run) should keep the NEW stamp.
+    // This way old cards lose NEW when a fresh batch arrives.
+    const insertedBySource: Record<string, number> = {};
+    for (const source of sources) {
+      if (source.lastRun && displayRunStatus(source.lastRun.status) === "SUCCESS") {
+        insertedBySource[source.id] = source.lastRun.jobsInserted;
+      }
+    }
+
+    // Collect isNew items per source, sorted newest-first by firstSeenAt
+    const newItemsBySource: Record<string, Array<{ firstSeenAt: string; id: string }>> = {};
+    for (const item of allItems) {
+      if (item.isNew) {
+        (newItemsBySource[item.sourceId] ??= []).push({ firstSeenAt: item.firstSeenAt, id: item.id });
+      }
+    }
+
+    // Build a set of item IDs that should actually keep the NEW stamp
+    const allowedNewIds = new Set<string>();
+    for (const [sourceId, items] of Object.entries(newItemsBySource)) {
+      const limit = insertedBySource[sourceId];
+      // Sort newest first
+      items.sort((a, b) => new Date(b.firstSeenAt).getTime() - new Date(a.firstSeenAt).getTime());
+      // If we know how many were inserted, only keep that many; otherwise none are new
+      const keep = limit != null ? Math.min(limit, items.length) : 0;
+      for (let i = 0; i < keep; i++) {
+        allowedNewIds.add(items[i].id);
+      }
+    }
+
+    return allItems
+      .map((item) => {
+        if (item.isNew && !allowedNewIds.has(item.id)) {
+          return { ...item, isNew: false };
+        }
+        return item;
+      })
+      .filter((item) => {
+        const matchesSearch = !query || `${item.title} ${item.subtitle}`.toLowerCase().includes(query);
+        const matchesSource = !selectedSourceId || item.sourceId === selectedSourceId;
+        return matchesSearch && matchesSource;
+      });
+  }, [contests, debouncedSearch, jobs, selectedSourceId, sources, viewMode]);
 
   const newCount = useMemo(
     () => sources.reduce((total, source) => total + (visibleNewCounts[source.id] ?? 0), 0),
@@ -1245,7 +1471,7 @@ export function App() {
   );
   const gridClassName = `grid cardSize-${displaySettings.size} displayStyle-${displaySettings.style}`;
 
-  if (showLoginPage && !currentUser) {
+  if (route === "/login" && !currentUser) {
     return (
       <LoginScreen
         authMessage={authMessage}
@@ -1258,9 +1484,22 @@ export function App() {
     );
   }
 
+  if (route !== "/dashboard") {
+    return (
+      <main>
+        <CinematicLanding
+          currentUser={currentUser}
+          onContinue={continueToDashboard}
+          onLogin={() => goToLogin("Login first to set reminders and save notification preferences.")}
+        />
+      </main>
+    );
+  }
+
   return (
     <main>
-      <DeparturesHeader
+      <div id="departures-board" className="boardShell">
+        <DeparturesHeader
         authLoading={authLoading}
         authMessage={authMessage}
         currentUser={currentUser}
@@ -1270,6 +1509,7 @@ export function App() {
         lastSynced={lastSynced}
         newCount={newCount}
         onLogin={loginWithEmail}
+        onLoginNavigate={() => goToLogin("Login first to set reminders and save notification preferences.")}
         onLogout={logout}
         onRefresh={() => refreshAll(true)}
         onSearchChange={setSearch}
@@ -1345,6 +1585,7 @@ export function App() {
           ))}
         </section>
       )}
+      </div>
     </main>
   );
 }
