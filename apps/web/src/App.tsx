@@ -447,8 +447,6 @@ function SourceManifest({
   onUpdatePreference: (sourceId: string, patch: Partial<Pick<UserPreference, "visible" | "emailEnabled">>) => void;
   sources: Source[];
 }) {
-  const newTotal = sources.reduce((total, source) => total + source.newCount, 0);
-
   return (
     <section className={expanded ? "sourceManifest expanded" : "sourceManifest"} aria-label="Subscribed routes">
       <button
@@ -458,7 +456,6 @@ function SourceManifest({
         onClick={onToggleExpanded}
       >
         <span>{sources.length} SOURCES</span>
-        <span>{newTotal} NEW</span>
         <b>{expanded ? "CLOSE" : "MANAGE"} ›</b>
       </button>
 
