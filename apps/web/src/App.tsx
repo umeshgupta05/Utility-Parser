@@ -1049,7 +1049,7 @@ export function App() {
       setAuthMessage(null);
       const { error: loginError } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/verify` }
+        options: { emailRedirectTo: window.location.origin }
       });
 
       if (loginError) throw loginError;
@@ -1073,7 +1073,7 @@ export function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
-    if (window.location.pathname !== "/auth/verify" || !code) return;
+    if (!code) return;
 
     const verifyLogin = async () => {
       try {
