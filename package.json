@@ -4,17 +4,13 @@
   "private": true,
   "packageManager": "pnpm@11.0.8",
   "scripts": {
-    "dev": "concurrently -n api,web -c cyan,magenta \"pnpm --filter @unstop-agent/api dev\" \"pnpm --filter @unstop-agent/web dev\"",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "scrape": "pnpm --filter @unstop-agent/api scrape",
-    "db:generate": "pnpm --filter @unstop-agent/api db:generate",
-    "db:migrate": "pnpm --filter @unstop-agent/api db:migrate",
-    "db:init": "pnpm --filter @unstop-agent/api db:init",
-    "db:studio": "pnpm --filter @unstop-agent/api db:studio"
+    "dev": "pnpm --filter @unstop-agent/web dev",
+    "build": "pnpm --filter @unstop-agent/web build",
+    "typecheck": "pnpm --filter @unstop-agent/web typecheck",
+    "supabase:push": "supabase db push",
+    "supabase:deploy": "supabase functions deploy unstop mycareernet hackerearth_jobs hackerearth_challenges codeforces leetcode codechef atcoder unstop_featured send-contest-reminders"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
     "typescript": "^5.9.3"
   }
 }

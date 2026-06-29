@@ -89,4 +89,4 @@ pnpm --filter @unstop-agent/web dev
 
 ## Legacy API
 
-The old Fastify/Prisma API under `apps/api` is kept as reference during the migration, but production data access now goes through Supabase directly.
+The old Fastify/Prisma API has been removed. Production data access goes through Supabase directly.
