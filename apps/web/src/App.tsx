@@ -49,6 +49,12 @@ type Source = {
   lastRun?: ScrapeRun | null;
 };
 
+type VisibleNewCount = {
+  count: number;
+  expiresAt: number;
+  runKey: string;
+};
+
 type ScrapeRun = {
     status: string;
     startedAt: string;
@@ -121,6 +127,8 @@ type DisplaySettings = {
   size: CardSize;
   style: DisplayStyle;
 };
+
+const NEW_COUNT_VISIBLE_MS = 5 * 60 * 1000;
 
 type TicketItem =
   | {
@@ -310,17 +318,17 @@ function mapSource(row: any): Source {
   };
 }
 
-function formatSourceStatus(source: Source) {
+function formatSourceStatus(source: Source, visibleNewCount: number) {
   if (!source.lastRun) return `${source.label.toUpperCase()}: NO SCRAPER RUNS YET`;
-  return `${displayRunStatus(source.lastRun.status)}: ${source.label.toUpperCase()} ${source.lastRun.jobsFound} FOUND, ${source.lastRun.jobsInserted} NEW`;
+  return `${displayRunStatus(source.lastRun.status)}: ${source.label.toUpperCase()} ${source.lastRun.jobsFound} FOUND, ${visibleNewCount} NEW`;
 }
 
-function formatAggregateStatus(sources: Source[]) {
+function formatAggregateStatus(sources: Source[], visibleNewCounts: Record<string, number>) {
   const runs = sources.map((source) => source.lastRun).filter((run): run is ScrapeRun => Boolean(run));
   if (runs.length === 0) return "NO SCRAPER RUNS YET";
 
   const found = runs.reduce((total, run) => total + run.jobsFound, 0);
-  const inserted = runs.reduce((total, run) => total + run.jobsInserted, 0);
+  const inserted = sources.reduce((total, source) => total + (visibleNewCounts[source.id] ?? 0), 0);
   const errors = runs.filter((run) => displayRunStatus(run.status) === "ERROR").length;
   const prefix = errors > 0 ? `ERROR: ${errors} SOURCE${errors === 1 ? "" : "S"} FAILED` : "SUCCESS";
 
@@ -871,6 +879,8 @@ export function App() {
   const [sourceManifestExpanded, setSourceManifestExpanded] = useState(false);
   const [userPreferences, setUserPreferences] = useState<Record<string, UserPreference>>({});
   const [contestReminders, setContestReminders] = useState<Set<string>>(new Set());
+  const [visibleNewBySource, setVisibleNewBySource] = useState<Record<string, VisibleNewCount>>({});
+  const [newCountClock, setNewCountClock] = useState(Date.now());
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
@@ -888,6 +898,43 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNewCountClock(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const seenAt = Date.now();
+    const activeSourceIds = new Set(sources.map((source) => source.id));
+
+    setVisibleNewBySource((current) => {
+      let changed = false;
+      const next: Record<string, VisibleNewCount> = {};
+
+      for (const [sourceId, value] of Object.entries(current)) {
+        if (activeSourceIds.has(sourceId)) next[sourceId] = value;
+        else changed = true;
+      }
+
+      for (const source of sources) {
+        const run = source.lastRun;
+        if (!run || displayRunStatus(run.status) !== "SUCCESS" || run.jobsInserted <= 0) continue;
+
+        const runKey = `${run.startedAt}:${run.endedAt ?? ""}:${run.jobsInserted}`;
+        if (next[source.id]?.runKey === runKey) continue;
+
+        next[source.id] = {
+          count: run.jobsInserted,
+          expiresAt: seenAt + NEW_COUNT_VISIBLE_MS,
+          runKey
+        };
+        changed = true;
+      }
+
+      return changed ? next : current;
+    });
+  }, [sources]);
 
   useEffect(() => {
     const onPopState = () => setShowLoginPage(window.location.pathname === "/login");
@@ -1154,10 +1201,21 @@ export function App() {
     return availableSources.filter((source) => source.id === selectedSourceId);
   }, [availableSources, selectedSourceId]);
 
+  const visibleNewCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        sources.map((source) => {
+          const visible = visibleNewBySource[source.id];
+          return [source.id, visible && visible.expiresAt > newCountClock ? visible.count : 0];
+        })
+      ) as Record<string, number>,
+    [newCountClock, sources, visibleNewBySource]
+  );
+
   const statusText = useMemo(() => {
-    if (statusSources.length === 1) return formatSourceStatus(statusSources[0]);
-    return formatAggregateStatus(statusSources);
-  }, [statusSources]);
+    if (statusSources.length === 1) return formatSourceStatus(statusSources[0], visibleNewCounts[statusSources[0].id] ?? 0);
+    return formatAggregateStatus(statusSources, visibleNewCounts);
+  }, [statusSources, visibleNewCounts]);
 
   const statusHasError = useMemo(
     () => Boolean(error || statusSources.some((source) => source.lastRun && displayRunStatus(source.lastRun.status) === "ERROR")),
@@ -1182,11 +1240,8 @@ export function App() {
   }, [contests, debouncedSearch, jobs, selectedSourceId, viewMode]);
 
   const newCount = useMemo(
-    () => sources.reduce((total, source) => {
-      const run = source.lastRun;
-      return run && displayRunStatus(run.status) === "SUCCESS" ? total + run.jobsInserted : total;
-    }, 0),
-    [sources]
+    () => sources.reduce((total, source) => total + (visibleNewCounts[source.id] ?? 0), 0),
+    [sources, visibleNewCounts]
   );
   const gridClassName = `grid cardSize-${displaySettings.size} displayStyle-${displaySettings.style}`;
 
