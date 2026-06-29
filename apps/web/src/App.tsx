@@ -12,6 +12,7 @@ import {
   Sun
 } from "lucide-react";
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { supabase } from "./supabaseClient";
 
 type Job = {
   id: string;
@@ -149,8 +150,6 @@ type TicketItem =
       startsAt: string;
     };
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
-
 function formatRelative(value: string | null) {
   if (!value) return "Date unknown";
   const date = new Date(value);
@@ -254,14 +253,61 @@ function formatSiteLabel(site: string) {
   return labels[site] ?? site.replaceAll("_", " ").replaceAll("-", " ");
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, { credentials: "include" });
-  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-  return response.json();
-}
-
 function displayRunStatus(status: string) {
   return status.split(":")[0].toUpperCase();
+}
+
+function mapRun(row: any): ScrapeRun | null {
+  if (!row) return null;
+  return {
+    status: row.status,
+    startedAt: row.started_at ?? row.startedAt,
+    endedAt: row.ended_at ?? row.endedAt ?? null,
+    jobsFound: row.jobs_found ?? row.jobsFound ?? 0,
+    jobsInserted: row.jobs_inserted ?? row.jobsInserted ?? 0,
+    errorMessage: row.error_message ?? row.errorMessage ?? null
+  };
+}
+
+function mapJob(row: any): Job {
+  return {
+    id: row.id,
+    sourceId: row.source_id,
+    title: row.title,
+    company: row.company,
+    location: row.location,
+    jobType: row.job_type,
+    timing: row.timing,
+    applyUrl: row.apply_url,
+    postedAt: row.posted_at,
+    deadline: row.deadline,
+    firstSeenAt: row.first_seen_at,
+    isNew: row.is_new
+  };
+}
+
+function mapContest(row: any): Contest {
+  return {
+    id: row.id,
+    site: row.site,
+    name: row.name,
+    url: row.url,
+    startTime: row.start_time,
+    durationSec: row.duration_sec,
+    firstSeenAt: row.first_seen_at,
+    isNew: row.is_new
+  };
+}
+
+function mapSource(row: any): Source {
+  return {
+    id: row.id,
+    label: row.label,
+    type: row.type,
+    enabled: row.enabled,
+    newCount: row.new_count ?? 0,
+    lastRun: mapRun(row.last_run)
+  };
 }
 
 function formatSourceStatus(source: Source) {
@@ -868,12 +914,23 @@ export function App() {
   };
 
   const loadStatus = async () => {
-    const [healthData, sourceData] = await Promise.all([
-      getJson<Health>("/api/health"),
-      getJson<{ data: Source[] }>("/api/sources")
+    const [sourceResult, jobCountResult, contestCountResult, runResult] = await Promise.all([
+      supabase.from("source_with_status").select("*").order("type").order("label"),
+      supabase.from("job").select("id", { count: "exact", head: true }),
+      supabase.from("contest").select("id", { count: "exact", head: true }),
+      supabase.from("scrape_run").select("*").order("started_at", { ascending: false }).limit(1).maybeSingle()
     ]);
-    setHealth(healthData);
-    setSources(sourceData.data);
+    if (sourceResult.error) throw sourceResult.error;
+    if (jobCountResult.error) throw jobCountResult.error;
+    if (contestCountResult.error) throw contestCountResult.error;
+    if (runResult.error) throw runResult.error;
+
+    setSources((sourceResult.data ?? []).map(mapSource));
+    setHealth({
+      ok: true,
+      jobCount: jobCountResult.count ?? 0,
+      lastRun: mapRun(runResult.data)
+    });
   };
 
   const applyUserState = (state: UserState) => {
@@ -886,8 +943,28 @@ export function App() {
 
   const loadUserState = async () => {
     try {
-      const state = await getJson<UserState>("/api/users/me/state");
-      applyUserState(state);
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) throw userError ?? new Error("Login required");
+      const [preferences, reminders] = await Promise.all([
+        supabase.from("user_source_preference").select("source_id,visible,email_enabled"),
+        supabase.from("contest_reminder").select("contest_id")
+      ]);
+      if (preferences.error) throw preferences.error;
+      if (reminders.error) throw reminders.error;
+      applyUserState({
+        user: {
+          id: userData.user.id,
+          email: userData.user.email ?? "",
+          createdAt: userData.user.created_at,
+          lastLoginAt: userData.user.last_sign_in_at ?? userData.user.created_at
+        },
+        preferences: (preferences.data ?? []).map((preference) => ({
+          sourceId: preference.source_id,
+          visible: preference.visible,
+          emailEnabled: preference.email_enabled
+        })),
+        reminders: (reminders.data ?? []).map((reminder) => reminder.contest_id)
+      });
     } catch {
       setCurrentUser(null);
       setUserPreferences({});
@@ -896,19 +973,27 @@ export function App() {
   };
 
   const loadJobs = async () => {
-    const params = new URLSearchParams({
-      page: "1",
-      limit: "100",
-      sortBy
-    });
+    let query = supabase.from("job").select("*").limit(100);
+    if (sortBy === "new_first") query = query.order("is_new", { ascending: false }).order("first_seen_at", { ascending: false });
+    else if (sortBy === "posted_newest") query = query.order("posted_at", { ascending: false, nullsFirst: false });
+    else if (sortBy === "posted_oldest") query = query.order("posted_at", { ascending: true, nullsFirst: false });
+    else if (sortBy === "deadline") query = query.order("deadline", { ascending: true, nullsFirst: false });
+    else if (sortBy === "deadline_latest") query = query.order("deadline", { ascending: false, nullsFirst: false });
+    else if (sortBy === "company_az") query = query.order("company", { ascending: true }).order("title");
+    else if (sortBy === "company_za") query = query.order("company", { ascending: false }).order("title");
+    else if (sortBy === "title_az") query = query.order("title", { ascending: true }).order("company");
+    else if (sortBy === "title_za") query = query.order("title", { ascending: false }).order("company");
+    else query = query.order("first_seen_at", { ascending: false });
 
-    const data = await getJson<JobsResponse>(`/api/jobs?${params.toString()}`);
-    setJobs(data.data);
+    const { data, error } = await query;
+    if (error) throw error;
+    setJobs((data ?? []).map(mapJob));
   };
 
   const loadContests = async () => {
-    const data = await getJson<ContestsResponse>("/api/contests?page=1&limit=100&sortBy=start_asc");
-    setContests(data.data);
+    const { data, error } = await supabase.from("contest").select("*").order("start_time", { ascending: true }).limit(100);
+    if (error) throw error;
+    setContests((data ?? []).map(mapContest));
   };
 
   const refreshAll = async (showRefreshing = false) => {
@@ -937,16 +1022,24 @@ export function App() {
       return;
     }
 
-    const response = await fetch(`${API_BASE}/api/users/me/preferences`, {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sourceId, ...patch })
+    const { error: upsertError } = await supabase.from("user_source_preference").upsert({
+      user_id: currentUser.id,
+      source_id: sourceId,
+      visible: patch.visible ?? userPreferences[sourceId]?.visible ?? true,
+      email_enabled: patch.emailEnabled ?? userPreferences[sourceId]?.emailEnabled ?? false
+    }, {
+      onConflict: "user_id,source_id"
     });
 
-    if (!response.ok) throw new Error("Preference update failed");
-    const body = (await response.json()) as { preference: UserPreference };
-    setUserPreferences((current) => ({ ...current, [sourceId]: body.preference }));
+    if (upsertError) throw upsertError;
+    setUserPreferences((current) => ({
+      ...current,
+      [sourceId]: {
+        sourceId,
+        visible: patch.visible ?? current[sourceId]?.visible ?? true,
+        emailEnabled: patch.emailEnabled ?? current[sourceId]?.emailEnabled ?? false
+      }
+    }));
   };
 
   const loginWithEmail = async (email: string) => {
@@ -954,14 +1047,12 @@ export function App() {
       setAuthLoading(true);
       setError(null);
       setAuthMessage(null);
-      const data = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
+      const { error: loginError } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/verify` }
       });
 
-      if (!data.ok) throw new Error("Enter a valid email address.");
+      if (loginError) throw loginError;
 
       setAuthMessage("Check your email");
     } catch (err) {
@@ -972,10 +1063,7 @@ export function App() {
   };
 
   const logout = async () => {
-    await fetch(`${API_BASE}/api/auth/logout`, {
-      method: "POST",
-      credentials: "include"
-    });
+    await supabase.auth.signOut();
     setCurrentUser(null);
     setAuthMessage(null);
     setUserPreferences({});
@@ -984,21 +1072,15 @@ export function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    if (window.location.pathname !== "/auth/verify" || !token) return;
+    const code = params.get("code");
+    if (window.location.pathname !== "/auth/verify" || !code) return;
 
     const verifyLogin = async () => {
       try {
         setAuthLoading(true);
         setError(null);
-        const response = await fetch(`${API_BASE}/api/auth/verify`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token })
-        });
-
-        if (!response.ok) throw new Error("Login link is invalid or expired.");
+        const { error: verifyError } = await supabase.auth.exchangeCodeForSession(code);
+        if (verifyError) throw verifyError;
         await loadUserState();
         setAuthMessage("Signed in");
         setShowLoginPage(false);
@@ -1020,14 +1102,16 @@ export function App() {
     }
 
     const enabled = !contestReminders.has(item.id);
-    const response = await fetch(`${API_BASE}/api/users/me/reminders`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contestId: item.id, enabled })
-    });
+    const notifyAt = new Date(Math.max(Date.now(), new Date(item.startsAt).getTime() - 60 * 60 * 1000)).toISOString();
+    const { error: reminderError } = enabled
+      ? await supabase.from("contest_reminder").upsert({
+          user_id: currentUser.id,
+          contest_id: item.id,
+          notify_at: notifyAt
+        }, { onConflict: "user_id,contest_id" })
+      : await supabase.from("contest_reminder").delete().eq("contest_id", item.id);
 
-    if (!response.ok) throw new Error("Reminder update failed");
+    if (reminderError) throw reminderError;
     setContestReminders((current) => {
       const next = new Set(current);
       if (enabled) next.add(item.id);
