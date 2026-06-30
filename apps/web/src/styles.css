@@ -74,6 +74,11 @@ main {
   height: 440vh;
   margin: -20px -24px 34px;
   position: relative;
+  --primary-video-opacity: 1;
+  --secondary-video-opacity: 0;
+  --scene-intro: 1;
+  --scene-sources: 0;
+  --scene-actions: 0;
 }
 
 .cinematicSticky {
@@ -100,12 +105,19 @@ main {
 }
 
 .heroVideo {
+  backface-visibility: hidden;
   opacity: 0;
   transition: opacity 260ms ease;
+  transform: translateZ(0);
+  will-change: opacity;
 }
 
-.heroVideo.ready {
-  opacity: 1;
+.videoPrimary.ready {
+  opacity: var(--primary-video-opacity);
+}
+
+.videoSecondary.ready {
+  opacity: var(--secondary-video-opacity);
 }
 
 .videoPoster {
@@ -135,13 +147,24 @@ main {
 }
 
 .sceneCopy {
+  border-left: 2px solid color-mix(in srgb, var(--brass) calc(var(--scene-opacity) * 100%), transparent);
   color: #f7f3ec;
   display: grid;
   gap: 10px;
   max-width: 390px;
+  opacity: var(--scene-opacity);
+  padding-left: 16px;
+  pointer-events: none;
   position: absolute;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+  transform:
+    translate3d(0, calc((1 - var(--scene-opacity)) * 28px), 0)
+    scale(calc(0.985 + (var(--scene-opacity) * 0.015)));
+  transition:
+    opacity 140ms linear,
+    transform 180ms ease;
   z-index: 3;
+  will-change: opacity, transform;
 }
 
 .sceneCopy span,
@@ -168,16 +191,19 @@ main {
 .sceneCopyIntro {
   left: clamp(22px, 7vw, 96px);
   top: 12vh;
+  --scene-opacity: var(--scene-intro);
 }
 
 .sceneCopySources {
   bottom: 18vh;
   left: clamp(22px, 7vw, 96px);
+  --scene-opacity: var(--scene-sources);
 }
 
 .sceneCopyActions {
   bottom: 13vh;
   right: clamp(22px, 7vw, 96px);
+  --scene-opacity: var(--scene-actions);
 }
 
 .landingExplainer,
@@ -592,6 +618,13 @@ h1 {
   min-width: 0;
 }
 
+.accountSlot .loginForm {
+  display: grid;
+  grid-template-columns: minmax(130px, 170px) auto;
+  justify-content: end;
+  max-width: 360px;
+}
+
 .loginForm input {
   background: color-mix(in srgb, var(--paper) 86%, white);
   border: 1px solid var(--line);
@@ -634,8 +667,12 @@ h1 {
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 700;
+  grid-column: 1 / -1;
+  line-height: 1.35;
+  max-width: 100%;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .userBadge {
@@ -1406,52 +1443,79 @@ select {
   }
 
   .cinematicLanding {
-    height: auto;
+    height: 440vh;
     margin: -14px -16px 24px;
   }
 
   .cinematicSticky {
-    display: grid;
-    gap: 0;
-    height: auto;
+    display: block;
+    height: 100vh;
     min-height: 100vh;
-    position: relative;
+    position: sticky;
   }
 
   .cinematicFrame {
-    aspect-ratio: 9 / 16;
-    min-height: 62vh;
-    position: relative;
+    inset: 0;
+    min-height: 0;
+    position: absolute;
+  }
+
+  .heroVideo,
+  .videoPrimary.ready,
+  .videoSecondary.ready {
+    object-fit: cover;
   }
 
   .cinematicSticky::after {
-    background: linear-gradient(180deg, rgba(13, 20, 27, 0.12), rgba(13, 20, 27, 0.72));
+    background:
+      linear-gradient(180deg, rgba(13, 20, 27, 0.78), rgba(13, 20, 27, 0.12) 36%, rgba(13, 20, 27, 0.78)),
+      linear-gradient(90deg, rgba(13, 20, 27, 0.48), transparent 58%);
   }
 
   .sceneCopy {
-    background: rgba(13, 20, 27, 0.76);
-    border-top: 1px solid rgba(247, 243, 236, 0.18);
-    max-width: none;
-    padding: 18px 20px;
-    position: relative;
-    text-shadow: none;
+    background: transparent;
+    max-width: min(82vw, 340px);
+    padding-left: 13px;
+    position: absolute;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.62);
   }
 
-  .sceneCopyIntro,
-  .sceneCopySources,
+  .sceneCopyIntro {
+    left: 18px;
+    top: 10vh;
+  }
+
+  .sceneCopySources {
+    bottom: 19vh;
+    left: 18px;
+  }
+
   .sceneCopyActions {
-    bottom: auto;
-    left: auto;
+    bottom: 8vh;
+    left: 18px;
     right: auto;
-    top: auto;
   }
 
   .sceneCopy h1 {
-    font-size: 40px;
+    font-size: clamp(36px, 13vw, 58px);
+  }
+
+  .sceneCopy p {
+    font-size: 12px;
+    line-height: 1.55;
   }
 
   .landingExplainer {
     grid-template-columns: 1fr;
+  }
+
+  .landingActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .landingCta button {
+    width: 100%;
   }
 
   .grid {
@@ -1479,6 +1543,13 @@ select {
 
   .loginPanel .loginForm {
     grid-template-columns: 1fr;
+  }
+
+  .accountSlot .loginForm {
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-content: stretch;
+    max-width: none;
+    width: 100%;
   }
 
   .ticketLookup,
@@ -1622,4 +1693,5 @@ select {
   .heroVideo {
     transition: none;
   }
+
 }

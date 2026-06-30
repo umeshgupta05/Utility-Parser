@@ -190,6 +190,22 @@ function formatCountdown(value: string) {
   return `starts in ${minutes}m`;
 }
 
+function contestEndTime(contest: Contest) {
+  return new Date(contest.startTime).getTime() + Math.max(0, contest.durationSec) * 1000;
+}
+
+function isContestEnded(contest: Contest) {
+  return contestEndTime(contest) <= Date.now();
+}
+
+function contestStatus(contest: Contest) {
+  const now = Date.now();
+  const start = new Date(contest.startTime).getTime();
+  if (contestEndTime(contest) <= now) return "Ended";
+  if (start <= now) return "Running";
+  return "Upcoming";
+}
+
 function formatDate(value: string | null) {
   if (!value) return "No deadline";
   return new Intl.DateTimeFormat("en-IN", {
@@ -246,6 +262,10 @@ function isDeadlineSoon(value: string | null) {
   if (!value) return false;
   const diff = new Date(value).getTime() - Date.now();
   return diff > 0 && diff <= 3 * 24 * 60 * 60 * 1000;
+}
+
+function isJobExpired(job: Job) {
+  return Boolean(job.deadline && new Date(job.deadline).getTime() <= Date.now());
 }
 
 function contestSourceId(site: string) {
@@ -857,7 +877,7 @@ function toJobTicket(job: Job): TicketItem {
 
 function toContestTicket(contest: Contest): TicketItem {
   const siteLabel = formatSiteLabel(contest.site);
-  const status = new Date(contest.startTime).getTime() <= Date.now() ? "Running" : "Upcoming";
+  const status = contestStatus(contest);
   return {
     kind: "contest",
     id: contest.id,
@@ -890,34 +910,84 @@ function CinematicLanding({
   onLogin: () => void;
 }) {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [videoReady, setVideoReady] = useState(false);
+  const primaryVideoRef = useRef<HTMLVideoElement | null>(null);
+  const secondaryVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoReady, setVideoReady] = useState({ primary: false, secondary: false });
 
   useEffect(() => {
-    const video = videoRef.current;
+    const primaryVideo = primaryVideoRef.current;
+    const secondaryVideo = secondaryVideoRef.current;
     const section = sectionRef.current;
-    if (!video || !section) return;
+    if (!primaryVideo || !secondaryVideo || !section) return;
 
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const mobileQuery = window.matchMedia("(max-width: 760px)");
-    const isFallback = () => mediaQuery.matches || mobileQuery.matches;
+    const isFallback = () => mediaQuery.matches;
     let frame = 0;
+    let lastPrimaryTime = -1;
+    let lastSecondaryTime = -1;
+
+    const setVideoMix = (primaryOpacity: number, secondaryOpacity: number) => {
+      section.style.setProperty("--primary-video-opacity", String(primaryOpacity));
+      section.style.setProperty("--secondary-video-opacity", String(secondaryOpacity));
+    };
+
+    const sceneOpacity = (progress: number, start: number, peakStart: number, peakEnd: number, end: number) => {
+      if (progress <= start || progress >= end) return 0;
+      if (progress >= peakStart && progress <= peakEnd) return 1;
+      if (progress < peakStart) return (progress - start) / (peakStart - start);
+      return (end - progress) / (end - peakEnd);
+    };
+
+    const setSceneProgress = (progress: number) => {
+      section.style.setProperty("--scene-intro", String(sceneOpacity(progress, 0, 0.04, 0.24, 0.34)));
+      section.style.setProperty("--scene-sources", String(sceneOpacity(progress, 0.28, 0.36, 0.52, 0.64)));
+      section.style.setProperty("--scene-actions", String(sceneOpacity(progress, 0.58, 0.68, 0.92, 1)));
+    };
+
+    const pauseVideos = () => {
+      primaryVideo.pause();
+      secondaryVideo.pause();
+    };
+
+    const seekIfNeeded = (video: HTMLVideoElement, nextTime: number, lastTime: number) => {
+      if (!Number.isFinite(nextTime) || !video.duration || video.readyState < 1) return lastTime;
+      if (Math.abs(nextTime - lastTime) < 0.045) return lastTime;
+
+      try {
+        video.currentTime = Math.min(video.duration, Math.max(0, nextTime));
+      } catch {
+        return lastTime;
+      }
+      return nextTime;
+    };
 
     const syncVideoToScroll = () => {
-      if (isFallback() || !video.duration) return;
+      if (isFallback()) return;
 
       const rect = section.getBoundingClientRect();
       const scrollable = Math.max(1, rect.height - window.innerHeight);
       const progress = Math.min(1, Math.max(0, -rect.top / scrollable));
-      const videoProgress = Math.min(1, progress / CINEMATIC_SCRUB_END_PROGRESS);
+      const primaryProgress = Math.min(1, progress / 0.54);
+      const secondaryProgress = Math.min(1, Math.max(0, (progress - 0.46) / (CINEMATIC_SCRUB_END_PROGRESS - 0.46)));
+      const secondaryAvailable = secondaryVideo.readyState >= 1 && Boolean(secondaryVideo.duration);
+      const crossfade = secondaryAvailable ? Math.min(1, Math.max(0, (progress - 0.46) / 0.12)) : 0;
+      const primaryOpacity = 1 - crossfade;
+      const secondaryOpacity = crossfade;
+      setSceneProgress(progress);
 
       if (rect.bottom < 0 || rect.top > window.innerHeight) {
-        video.pause();
+        pauseVideos();
         return;
       }
 
-      video.pause();
-      video.currentTime = videoProgress * video.duration;
+      pauseVideos();
+      if (primaryOpacity > 0.02) {
+        lastPrimaryTime = seekIfNeeded(primaryVideo, primaryProgress * primaryVideo.duration, lastPrimaryTime);
+      }
+      if (secondaryOpacity > 0.02) {
+        lastSecondaryTime = seekIfNeeded(secondaryVideo, secondaryProgress * secondaryVideo.duration, lastSecondaryTime);
+      }
+      setVideoMix(primaryOpacity, secondaryOpacity);
     };
 
     const requestSync = () => {
@@ -927,12 +997,16 @@ function CinematicLanding({
 
     const configurePlayback = () => {
       if (isFallback()) {
-        video.currentTime = 0;
-        void video.play().catch(() => undefined);
+        setVideoMix(1, 0);
+        setSceneProgress(0.08);
+        if (primaryVideo.readyState >= 1) primaryVideo.currentTime = 0;
+        if (secondaryVideo.readyState >= 1) secondaryVideo.currentTime = 0;
+        void primaryVideo.play().catch(() => undefined);
+        secondaryVideo.pause();
         return;
       }
 
-      video.pause();
+      pauseVideos();
       requestSync();
     };
 
@@ -943,27 +1017,27 @@ function CinematicLanding({
           return;
         }
 
-        video.pause();
+        pauseVideos();
       },
       { threshold: 0.05 }
     );
 
     observer.observe(section);
     configurePlayback();
-    video.addEventListener("loadedmetadata", requestSync);
+    primaryVideo.addEventListener("loadedmetadata", requestSync);
+    secondaryVideo.addEventListener("loadedmetadata", requestSync);
     window.addEventListener("scroll", requestSync, { passive: true });
     window.addEventListener("resize", configurePlayback);
     mediaQuery.addEventListener("change", configurePlayback);
-    mobileQuery.addEventListener("change", configurePlayback);
 
     return () => {
       observer.disconnect();
       window.cancelAnimationFrame(frame);
-      video.removeEventListener("loadedmetadata", requestSync);
+      primaryVideo.removeEventListener("loadedmetadata", requestSync);
+      secondaryVideo.removeEventListener("loadedmetadata", requestSync);
       window.removeEventListener("scroll", requestSync);
       window.removeEventListener("resize", configurePlayback);
       mediaQuery.removeEventListener("change", configurePlayback);
-      mobileQuery.removeEventListener("change", configurePlayback);
     };
   }, []);
 
@@ -972,21 +1046,32 @@ function CinematicLanding({
       <section className="cinematicLanding" ref={sectionRef} aria-label="Opportunity Departures introduction">
         <div className="cinematicSticky">
           <div className="cinematicFrame">
-            {!videoReady ? (
+            {!videoReady.primary ? (
               <div className="videoPoster" aria-hidden="true">
                 <span>OPPORTUNITY DEPARTURES</span>
               </div>
             ) : null}
             <video
               aria-label="Cinematic preview of Opportunity Departures"
-              className={videoReady ? "heroVideo ready" : "heroVideo"}
+              className={videoReady.primary ? "heroVideo videoPrimary ready" : "heroVideo videoPrimary"}
               muted
               playsInline
               preload="metadata"
-              ref={videoRef}
-              onCanPlay={() => setVideoReady(true)}
+              ref={primaryVideoRef}
+              onCanPlay={() => setVideoReady((current) => ({ ...current, primary: true }))}
             >
               <source src="/Create_a_premium_cinematic_D.mp4" type="video/mp4" />
+            </video>
+            <video
+              aria-label="Dashboard transition preview"
+              className={videoReady.secondary ? "heroVideo videoSecondary ready" : "heroVideo videoSecondary"}
+              muted
+              playsInline
+              preload="metadata"
+              ref={secondaryVideoRef}
+              onCanPlay={() => setVideoReady((current) => ({ ...current, secondary: true }))}
+            >
+              <source src="/Video_Project.mp4" type="video/mp4" />
             </video>
           </div>
 
@@ -1218,13 +1303,13 @@ export function App() {
 
     const { data, error } = await query;
     if (error) throw error;
-    setJobs((data ?? []).map(mapJob));
+    setJobs((data ?? []).map(mapJob).filter((job) => !isJobExpired(job)));
   };
 
   const loadContests = async () => {
     const { data, error } = await supabase.from("contest").select("*").order("start_time", { ascending: true }).limit(100);
     if (error) throw error;
-    setContests((data ?? []).map(mapContest));
+    setContests((data ?? []).map(mapContest).filter((contest) => !isContestEnded(contest)));
   };
 
   const refreshAll = async (showRefreshing = false) => {
