@@ -1486,6 +1486,9 @@ select {
   }
 
   .cinematicSticky {
+    background:
+      radial-gradient(circle at center, rgba(192, 138, 53, 0.12), transparent 42%),
+      #0d141b;
     display: block;
     height: 100vh;
     min-height: 100vh;
@@ -1501,13 +1504,14 @@ select {
   .heroVideo,
   .videoPrimary.ready,
   .videoSecondary.ready {
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center center;
   }
 
   .cinematicSticky::after {
     background:
-      linear-gradient(180deg, rgba(13, 20, 27, 0.86), rgba(13, 20, 27, 0.18) 36%, rgba(13, 20, 27, 0.84)),
-      linear-gradient(90deg, rgba(13, 20, 27, 0.62), transparent 62%);
+      linear-gradient(180deg, rgba(13, 20, 27, 0.8), rgba(13, 20, 27, 0.08) 38%, rgba(13, 20, 27, 0.78)),
+      linear-gradient(90deg, rgba(13, 20, 27, 0.52), transparent 64%);
   }
 
   .sceneCopy {
