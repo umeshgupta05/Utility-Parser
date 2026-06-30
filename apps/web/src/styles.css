@@ -1487,8 +1487,9 @@ select {
 
   .cinematicSticky {
     background:
-      radial-gradient(circle at center, rgba(192, 138, 53, 0.12), transparent 42%),
-      #0d141b;
+      radial-gradient(circle at 50% 10%, rgba(192, 138, 53, 0.24), transparent 34%),
+      radial-gradient(circle at 50% 92%, rgba(47, 93, 80, 0.28), transparent 38%),
+      linear-gradient(180deg, #17120d 0%, #0d141b 44%, #17120d 100%);
     display: block;
     height: 100vh;
     min-height: 100vh;
@@ -1510,13 +1511,13 @@ select {
 
   .cinematicSticky::after {
     background:
-      linear-gradient(180deg, rgba(13, 20, 27, 0.8), rgba(13, 20, 27, 0.08) 38%, rgba(13, 20, 27, 0.78)),
-      linear-gradient(90deg, rgba(13, 20, 27, 0.52), transparent 64%);
+      linear-gradient(180deg, rgba(23, 18, 13, 0.74), rgba(13, 20, 27, 0.02) 32%, rgba(23, 18, 13, 0.76)),
+      linear-gradient(90deg, rgba(13, 20, 27, 0.22), transparent 68%);
   }
 
   .sceneCopy {
     background: transparent;
-    max-width: min(86vw, 360px);
+    max-width: min(88vw, 380px);
     padding-left: 14px;
     position: absolute;
     text-shadow:
@@ -1526,16 +1527,16 @@ select {
 
   .sceneCopyIntro {
     left: 18px;
-    top: 10vh;
+    top: max(18px, env(safe-area-inset-top));
   }
 
   .sceneCopySources {
-    bottom: 19vh;
+    bottom: max(92px, calc(env(safe-area-inset-bottom) + 92px));
     left: 18px;
   }
 
   .sceneCopyActions {
-    bottom: 8vh;
+    bottom: max(26px, calc(env(safe-area-inset-bottom) + 26px));
     left: 18px;
     right: auto;
   }
@@ -1545,16 +1546,16 @@ select {
   }
 
   .sceneCopy h1 {
-    font-size: clamp(36px, 13vw, 58px);
+    font-size: clamp(30px, 10vw, 46px);
   }
 
   .sceneCopy p {
-    font-size: clamp(22px, 7.2vw, 34px);
-    line-height: 1.08;
+    font-size: clamp(18px, 5.8vw, 27px);
+    line-height: 1.04;
   }
 
   .sceneCopyIntro p {
-    font-size: clamp(20px, 6.4vw, 30px);
+    font-size: clamp(16px, 5vw, 23px);
   }
 
   .landingExplainer {
