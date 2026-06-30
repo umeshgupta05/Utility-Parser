@@ -138,8 +138,8 @@ main {
 
 .cinematicSticky::after {
   background:
-    linear-gradient(90deg, rgba(13, 20, 27, 0.82), transparent 38%, rgba(13, 20, 27, 0.42)),
-    linear-gradient(180deg, rgba(13, 20, 27, 0.22), rgba(13, 20, 27, 0.46));
+    linear-gradient(90deg, rgba(13, 20, 27, 0.9), rgba(13, 20, 27, 0.2) 42%, rgba(13, 20, 27, 0.52)),
+    linear-gradient(180deg, rgba(13, 20, 27, 0.34), rgba(13, 20, 27, 0.58));
   content: "";
   inset: 0;
   pointer-events: none;
@@ -150,13 +150,15 @@ main {
   border-left: 2px solid color-mix(in srgb, var(--brass) calc(var(--scene-opacity) * 100%), transparent);
   color: #f7f3ec;
   display: grid;
-  gap: 10px;
-  max-width: 390px;
+  gap: 12px;
+  max-width: 470px;
   opacity: var(--scene-opacity);
-  padding-left: 16px;
+  padding: 4px 0 4px 18px;
   pointer-events: none;
   position: absolute;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+  text-shadow:
+    0 2px 20px rgba(0, 0, 0, 0.82),
+    0 0 1px rgba(0, 0, 0, 0.9);
   transform:
     translate3d(0, calc((1 - var(--scene-opacity)) * 28px), 0)
     scale(calc(0.985 + (var(--scene-opacity) * 0.015)));
@@ -172,20 +174,29 @@ main {
 .landingCta span {
   color: var(--brass);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .sceneCopy h1 {
-  font-size: clamp(42px, 7vw, 92px);
+  font-size: clamp(48px, 7.6vw, 104px);
+  font-weight: 800;
   max-width: 720px;
 }
 
 .sceneCopy p {
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.65;
+  color: #fff8ec;
+  font-family: var(--display);
+  font-size: clamp(24px, 2.6vw, 40px);
+  font-weight: 800;
+  line-height: 1.08;
+  max-width: 560px;
+}
+
+.sceneCopyIntro p {
+  font-size: clamp(22px, 2.2vw, 34px);
 }
 
 .sceneCopyIntro {
@@ -204,6 +215,33 @@ main {
   bottom: 13vh;
   right: clamp(22px, 7vw, 96px);
   --scene-opacity: var(--scene-actions);
+}
+
+.scrollCue {
+  align-items: center;
+  background: rgba(13, 20, 27, 0.48);
+  border: 1px solid rgba(247, 243, 236, 0.28);
+  border-radius: 999px;
+  bottom: 24px;
+  color: #f7f3ec;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  gap: 8px;
+  left: 50%;
+  letter-spacing: 0.08em;
+  min-height: 42px;
+  padding: 0 14px 0 16px;
+  position: absolute;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+.scrollCue svg {
+  animation: scrollCueBounce 1.15s ease-in-out infinite;
 }
 
 .landingExplainer,
@@ -1468,16 +1506,18 @@ select {
 
   .cinematicSticky::after {
     background:
-      linear-gradient(180deg, rgba(13, 20, 27, 0.78), rgba(13, 20, 27, 0.12) 36%, rgba(13, 20, 27, 0.78)),
-      linear-gradient(90deg, rgba(13, 20, 27, 0.48), transparent 58%);
+      linear-gradient(180deg, rgba(13, 20, 27, 0.86), rgba(13, 20, 27, 0.18) 36%, rgba(13, 20, 27, 0.84)),
+      linear-gradient(90deg, rgba(13, 20, 27, 0.62), transparent 62%);
   }
 
   .sceneCopy {
     background: transparent;
-    max-width: min(82vw, 340px);
-    padding-left: 13px;
+    max-width: min(86vw, 360px);
+    padding-left: 14px;
     position: absolute;
-    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.62);
+    text-shadow:
+      0 2px 18px rgba(0, 0, 0, 0.84),
+      0 0 1px rgba(0, 0, 0, 0.9);
   }
 
   .sceneCopyIntro {
@@ -1496,13 +1536,21 @@ select {
     right: auto;
   }
 
+  .scrollCue {
+    bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
   .sceneCopy h1 {
     font-size: clamp(36px, 13vw, 58px);
   }
 
   .sceneCopy p {
-    font-size: 12px;
-    line-height: 1.55;
+    font-size: clamp(22px, 7.2vw, 34px);
+    line-height: 1.08;
+  }
+
+  .sceneCopyIntro p {
+    font-size: clamp(20px, 6.4vw, 30px);
   }
 
   .landingExplainer {
@@ -1694,4 +1742,19 @@ select {
     transition: none;
   }
 
+  .scrollCue svg {
+    animation: none;
+  }
+
+}
+
+@keyframes scrollCueBounce {
+  0%,
+  100% {
+    transform: translateY(-2px);
+  }
+
+  50% {
+    transform: translateY(3px);
+  }
 }

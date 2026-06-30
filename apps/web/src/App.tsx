@@ -2,6 +2,7 @@ import {
   ArrowUpRight,
   Bell,
   BellOff,
+  ChevronDown,
   Columns,
   Milestone,
   Moon,
@@ -913,6 +914,7 @@ function CinematicLanding({
   const primaryVideoRef = useRef<HTMLVideoElement | null>(null);
   const secondaryVideoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState({ primary: false, secondary: false });
+  const [showScrollCue, setShowScrollCue] = useState(() => window.scrollY < 8);
 
   useEffect(() => {
     const primaryVideo = primaryVideoRef.current;
@@ -1041,6 +1043,35 @@ function CinematicLanding({
     };
   }, []);
 
+  useEffect(() => {
+    if (!showScrollCue) return;
+
+    const hideCue = () => {
+      if (window.scrollY > 4) setShowScrollCue(false);
+    };
+    const hideCueImmediately = () => setShowScrollCue(false);
+    const hideCueOnKey = (event: KeyboardEvent) => {
+      if (["ArrowDown", "PageDown", " ", "Spacebar"].includes(event.key)) hideCueImmediately();
+    };
+
+    window.addEventListener("scroll", hideCue, { passive: true });
+    window.addEventListener("wheel", hideCueImmediately, { passive: true, once: true });
+    window.addEventListener("touchmove", hideCueImmediately, { passive: true, once: true });
+    window.addEventListener("keydown", hideCueOnKey);
+
+    return () => {
+      window.removeEventListener("scroll", hideCue);
+      window.removeEventListener("wheel", hideCueImmediately);
+      window.removeEventListener("touchmove", hideCueImmediately);
+      window.removeEventListener("keydown", hideCueOnKey);
+    };
+  }, [showScrollCue]);
+
+  const advanceCinematicScroll = () => {
+    setShowScrollCue(false);
+    window.scrollBy({ top: Math.round(window.innerHeight * 0.72), behavior: "smooth" });
+  };
+
   return (
     <>
       <section className="cinematicLanding" ref={sectionRef} aria-label="Opportunity Departures introduction">
@@ -1089,6 +1120,13 @@ function CinematicLanding({
             <span>READY TO ACT</span>
             <p>Filter the board, share a ticket, open Apply or Register, and set reminders before contests start.</p>
           </div>
+
+          {showScrollCue ? (
+            <button className="scrollCue" type="button" onClick={advanceCinematicScroll} aria-label="Scroll to explore">
+              <span>Scroll</span>
+              <ChevronDown size={22} />
+            </button>
+          ) : null}
         </div>
       </section>
 
