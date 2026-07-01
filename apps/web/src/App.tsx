@@ -914,7 +914,7 @@ function CinematicLanding({
   const primaryVideoRef = useRef<HTMLVideoElement | null>(null);
   const secondaryVideoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState({ primary: false, secondary: false });
-  const [showScrollCue, setShowScrollCue] = useState(() => window.scrollY < 8);
+  const [showScrollCue, setShowScrollCue] = useState(true);
 
   useEffect(() => {
     const primaryVideo = primaryVideoRef.current;
@@ -1047,7 +1047,7 @@ function CinematicLanding({
     if (!showScrollCue) return;
 
     const hideCue = () => {
-      if (window.scrollY > 4) setShowScrollCue(false);
+      if (window.scrollY > 24) setShowScrollCue(false);
     };
     const hideCueImmediately = () => setShowScrollCue(false);
     const hideCueOnKey = (event: KeyboardEvent) => {
