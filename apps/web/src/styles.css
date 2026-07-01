@@ -987,8 +987,8 @@ select {
   border-radius: 8px;
   box-shadow: 0 8px 18px rgba(28, 43, 58, 0.08);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 18px minmax(112px, 25%);
-  min-height: 246px;
+  grid-template-columns: minmax(0, 1fr) 16px minmax(104px, 23%);
+  min-height: 218px;
   overflow: hidden;
   position: relative;
   transition:
@@ -1000,7 +1000,7 @@ select {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--paper) 94%, white), var(--paper));
   grid-template-columns: minmax(0, 1fr);
-  min-height: 232px;
+  min-height: 206px;
 }
 
 .displayStyle-board .perforation,
@@ -1086,21 +1086,21 @@ select {
 }
 
 .cardSize-compact {
-  gap: 16px;
+  gap: 14px;
 }
 
 .cardSize-compact .ticketCard {
-  grid-template-columns: minmax(0, 1fr) 16px minmax(96px, 22%);
-  min-height: 212px;
+  grid-template-columns: minmax(0, 1fr) 14px minmax(88px, 20%);
+  min-height: 186px;
 }
 
 .cardSize-compact .ticketMain {
-  gap: 9px;
-  padding: 18px;
+  gap: 7px;
+  padding: 15px;
 }
 
 .cardSize-compact .ticketMain h2 {
-  font-size: clamp(22px, 2.3vw, 30px);
+  font-size: clamp(20px, 2vw, 27px);
 }
 
 .cardSize-compact .ticketCompany,
@@ -1113,16 +1113,16 @@ select {
 }
 
 .cardSize-large .ticketCard {
-  min-height: 292px;
+  min-height: 264px;
 }
 
 .cardSize-large .ticketMain {
-  gap: 15px;
-  padding: 28px;
+  gap: 13px;
+  padding: 24px;
 }
 
 .cardSize-large .ticketMain h2 {
-  font-size: clamp(30px, 3.4vw, 44px);
+  font-size: clamp(27px, 3vw, 38px);
 }
 
 .cardSize-large .ticketCompany,
@@ -1131,16 +1131,16 @@ select {
 }
 
 .cardSize-compact.displayStyle-board .ticketCard {
-  min-height: 198px;
+  min-height: 176px;
 }
 
 .cardSize-compact.displayStyle-board .ticketMain {
-  gap: 8px;
-  padding: 18px;
+  gap: 7px;
+  padding: 15px;
 }
 
 .cardSize-compact.displayStyle-board .ticketMain h2 {
-  font-size: clamp(22px, 2.4vw, 30px);
+  font-size: clamp(20px, 2vw, 27px);
 }
 
 .cardSize-compact.displayStyle-list .ticketCard {
@@ -1175,7 +1175,7 @@ select {
 }
 
 .cardSize-large.displayStyle-board .ticketCard {
-  min-height: 286px;
+  min-height: 254px;
 }
 
 .cardSize-large.displayStyle-list .ticketCard {
@@ -1220,9 +1220,9 @@ select {
 .ticketMain {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
-  padding: 22px;
+  padding: 18px;
   position: relative;
 }
 
@@ -1246,15 +1246,15 @@ select {
 
 .ticketMain h2 {
   font-family: var(--display);
-  font-size: clamp(25px, 3vw, 38px);
+  font-size: clamp(22px, 2.5vw, 32px);
   line-height: 1;
-  padding-right: 78px;
+  padding-right: 70px;
 }
 
 .ticketCompany {
   color: color-mix(in srgb, var(--ink) 72%, transparent);
   font-family: var(--mono);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -1264,8 +1264,8 @@ select {
   gap: 6px;
   justify-items: end;
   position: absolute;
-  right: 18px;
-  top: 18px;
+  right: 15px;
+  top: 15px;
   z-index: 1;
 }
 
@@ -1275,20 +1275,20 @@ select {
   border-radius: 6px;
   color: var(--brass);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 5px 8px;
+  padding: 4px 7px;
   transform: rotate(-2deg);
 }
 
 .dateStamp {
-  font-size: 12px;
+  font-size: 11px;
   transform: rotate(1.5deg);
 }
 
 .ticketDataGrid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: auto;
 }
@@ -1296,9 +1296,9 @@ select {
 .ticketData {
   border-top: 1px solid var(--line);
   display: grid;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
-  padding-top: 10px;
+  padding-top: 8px;
 }
 
 .ticketData span {
@@ -1944,8 +1944,8 @@ select {
   }
 
   .ticketMain {
-    gap: 8px;
-    padding: 15px;
+    gap: 7px;
+    padding: 13px;
   }
 
   .cardSize-compact .ticketMain {
@@ -1954,8 +1954,8 @@ select {
   }
 
   .cardSize-large .ticketMain {
-    gap: 10px;
-    padding: 18px;
+    gap: 9px;
+    padding: 16px;
   }
 
   .displayStyle-list .ticketMain {
@@ -1964,13 +1964,13 @@ select {
   }
 
   .ticketMain h2 {
-    font-size: clamp(22px, 8vw, 30px);
+    font-size: clamp(20px, 7.2vw, 27px);
     line-height: 0.98;
-    padding-right: 72px;
+    padding-right: 64px;
   }
 
   .displayStyle-list .ticketMain h2 {
-    font-size: clamp(22px, 8vw, 30px);
+    font-size: clamp(18px, 6.4vw, 24px);
   }
 
   .cardSize-compact .ticketMain h2 {
@@ -1978,7 +1978,7 @@ select {
   }
 
   .cardSize-large .ticketMain h2 {
-    font-size: clamp(25px, 9vw, 34px);
+    font-size: clamp(23px, 8vw, 31px);
   }
 
   .ticketRoute {
