@@ -222,7 +222,7 @@ main {
   background: rgba(13, 20, 27, 0.48);
   border: 1px solid rgba(247, 243, 236, 0.28);
   border-radius: 999px;
-  bottom: 24px;
+  bottom: clamp(56px, 9vh, 104px);
   color: #f7f3ec;
   cursor: pointer;
   display: inline-flex;
@@ -976,9 +976,9 @@ select {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.displayStyle-list {
+.displayStyle-list[data-columns="auto"] {
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .ticketCard {
@@ -1128,6 +1128,84 @@ select {
 .cardSize-large .ticketCompany,
 .cardSize-large .ticketData strong {
   font-size: 16px;
+}
+
+.cardSize-compact.displayStyle-board .ticketCard {
+  min-height: 198px;
+}
+
+.cardSize-compact.displayStyle-board .ticketMain {
+  gap: 8px;
+  padding: 18px;
+}
+
+.cardSize-compact.displayStyle-board .ticketMain h2 {
+  font-size: clamp(22px, 2.4vw, 30px);
+}
+
+.cardSize-compact.displayStyle-list .ticketCard {
+  grid-template-columns: minmax(0, 1fr) 10px minmax(104px, 15%);
+  min-height: 132px;
+}
+
+.cardSize-compact.displayStyle-list .ticketMain {
+  gap: 6px;
+  padding: 13px 15px;
+}
+
+.cardSize-compact.displayStyle-list .ticketMain h2 {
+  font-size: clamp(19px, 1.8vw, 24px);
+}
+
+.cardSize-compact.displayStyle-list .ticketDataGrid {
+  gap: 6px;
+}
+
+.cardSize-compact.displayStyle-list .ticketStub {
+  gap: 6px;
+  padding: 12px 8px;
+}
+
+.cardSize-compact.displayStyle-list .barcode {
+  height: 34px;
+}
+
+.cardSize-compact.displayStyle-list .applyTicket {
+  min-height: 58px;
+}
+
+.cardSize-large.displayStyle-board .ticketCard {
+  min-height: 286px;
+}
+
+.cardSize-large.displayStyle-list .ticketCard {
+  grid-template-columns: minmax(0, 1fr) 14px minmax(140px, 18%);
+  min-height: 186px;
+}
+
+.cardSize-large.displayStyle-list .ticketMain {
+  gap: 10px;
+  padding: 20px 22px;
+}
+
+.cardSize-large.displayStyle-list .ticketMain h2 {
+  font-size: clamp(25px, 2.4vw, 34px);
+}
+
+.cardSize-large.displayStyle-list .ticketData strong {
+  font-size: 14px;
+}
+
+.cardSize-large.displayStyle-list .ticketStub {
+  padding: 16px 12px;
+}
+
+.cardSize-large.displayStyle-list .barcode {
+  height: 58px;
+}
+
+.cardSize-large.displayStyle-list .applyTicket {
+  min-height: 88px;
 }
 
 .ticketCard:hover {
@@ -1544,7 +1622,7 @@ select {
   .scrollCue {
     background: rgba(13, 20, 27, 0.78);
     border-color: rgba(247, 243, 236, 0.52);
-    bottom: max(20px, calc(env(safe-area-inset-bottom) + 20px));
+    bottom: max(86px, calc(env(safe-area-inset-bottom) + 12vh));
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.36);
     min-height: 44px;
     white-space: nowrap;
@@ -1824,6 +1902,10 @@ select {
     width: 100%;
   }
 
+  .displayControls select option[value="3"] {
+    display: none;
+  }
+
   .statusLine {
     background: color-mix(in srgb, var(--paper) 88%, var(--stub-grey));
     border: 1px solid var(--line);
@@ -2021,6 +2103,89 @@ select {
     display: none;
   }
 
+  .displayStyle-list {
+    gap: 8px;
+    grid-template-columns: 1fr !important;
+  }
+
+  .displayStyle-list .ticketCard {
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--brass) 18%, transparent) 0 4px, transparent 4px),
+      color-mix(in srgb, var(--paper) 96%, white);
+    border-radius: 8px;
+    box-shadow: none;
+    grid-template-columns: 1fr;
+  }
+
+  .displayStyle-list .ticketMain {
+    gap: 6px;
+    padding: 12px 12px 10px 16px;
+  }
+
+  .displayStyle-list .ticketMain h2 {
+    font-family: var(--utility);
+    font-size: clamp(17px, 5.4vw, 22px);
+    font-weight: 750;
+    line-height: 1.08;
+    padding-right: 58px;
+  }
+
+  .displayStyle-list .ticketRoute {
+    font-size: 9px;
+    padding-top: 0;
+  }
+
+  .displayStyle-list .ticketCompany {
+    font-size: 10px;
+  }
+
+  .displayStyle-list .stampStack {
+    right: 10px;
+    top: 10px;
+  }
+
+  .displayStyle-list .perforation,
+  .displayStyle-list .barcode {
+    display: none;
+  }
+
+  .displayStyle-list .ticketDataGrid {
+    gap: 6px 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 2px;
+  }
+
+  .displayStyle-list .ticketData {
+    border-top-style: dashed;
+    padding-top: 5px;
+  }
+
+  .displayStyle-list .ticketData span {
+    font-size: 8px;
+  }
+
+  .displayStyle-list .ticketData strong {
+    font-size: 10px;
+  }
+
+  .displayStyle-list .ticketStub {
+    background: transparent;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px 10px 16px;
+  }
+
+  .displayStyle-list .reminderTicket,
+  .displayStyle-list .shareTicket,
+  .displayStyle-list .applyTicket {
+    flex: 1 1 96px;
+    font-size: 9px;
+    min-height: 36px;
+    padding: 0 8px;
+  }
+
   .applyTicket,
   .reminderTicket,
   .shareTicket {
@@ -2073,6 +2238,27 @@ select {
   .grid[data-columns="3"] .newStamp {
     font-size: 8px;
     padding: 3px 4px;
+  }
+
+  .displayStyle-list[data-columns="2"],
+  .displayStyle-list[data-columns="3"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .displayStyle-list[data-columns="2"] .ticketMain,
+  .displayStyle-list[data-columns="3"] .ticketMain {
+    padding: 12px 12px 10px 16px;
+  }
+
+  .displayStyle-list[data-columns="2"] .ticketMain h2,
+  .displayStyle-list[data-columns="3"] .ticketMain h2 {
+    font-size: clamp(17px, 5.4vw, 22px);
+    padding-right: 58px;
+  }
+
+  .displayStyle-list[data-columns="2"] .ticketDataGrid,
+  .displayStyle-list[data-columns="3"] .ticketDataGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
