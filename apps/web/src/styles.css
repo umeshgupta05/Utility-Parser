@@ -1163,7 +1163,7 @@ select {
 
 .cardSize-compact.displayStyle-list .ticketStub {
   gap: 6px;
-  padding: 12px 8px;
+  padding: 10px 8px;
 }
 
 .cardSize-compact.displayStyle-list .barcode {
@@ -1171,7 +1171,16 @@ select {
 }
 
 .cardSize-compact.displayStyle-list .applyTicket {
-  min-height: 58px;
+  font-size: 12px;
+  min-height: 52px;
+  padding: 8px 7px;
+}
+
+.cardSize-compact.displayStyle-list .reminderTicket,
+.cardSize-compact.displayStyle-list .shareTicket {
+  font-size: 11px;
+  min-height: 32px;
+  padding: 6px 7px;
 }
 
 .cardSize-large.displayStyle-board .ticketCard {
@@ -1403,7 +1412,25 @@ select {
   font-weight: 750;
   gap: 8px;
   justify-content: center;
+  line-height: 1;
+  min-width: 0;
+  overflow: hidden;
   text-transform: uppercase;
+}
+
+.reminderTicket svg,
+.shareTicket svg,
+.applyTicket svg {
+  flex: 0 0 auto;
+}
+
+.reminderTicket span,
+.shareTicket span,
+.applyTicket span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reminderTicket,
@@ -1447,6 +1474,264 @@ select {
   max-width: 720px;
   padding: 28px;
   text-align: center;
+}
+
+/* Final display sizing layer: keeps card size presets consistent across styles. */
+.grid {
+  gap: 18px;
+}
+
+.ticketCard {
+  grid-template-columns: minmax(0, 1fr) 14px minmax(96px, 21%);
+  min-height: 188px;
+}
+
+.ticketMain {
+  gap: 8px;
+  padding: 14px;
+}
+
+.ticketMain h2 {
+  font-size: clamp(18px, 1.8vw, 25px);
+  padding-right: 62px;
+}
+
+.ticketCompany {
+  font-size: 12px;
+}
+
+.ticketDataGrid {
+  gap: 8px;
+}
+
+.ticketData {
+  gap: 3px;
+  padding-top: 7px;
+}
+
+.ticketData strong {
+  font-size: 12px;
+}
+
+.stampStack {
+  right: 12px;
+  top: 12px;
+}
+
+.newStamp,
+.dateStamp {
+  font-size: 10px;
+  padding: 4px 6px;
+}
+
+.ticketStub {
+  gap: 10px;
+  padding: 14px 10px;
+}
+
+.barcode {
+  height: 54px;
+}
+
+.applyTicket {
+  min-height: 86px;
+}
+
+.cardSize-compact {
+  gap: 12px;
+}
+
+.cardSize-compact .ticketCard {
+  grid-template-columns: minmax(0, 1fr) 12px minmax(84px, 20%);
+  min-height: 158px;
+}
+
+.cardSize-compact .ticketMain {
+  gap: 6px;
+  padding: 11px;
+}
+
+.cardSize-compact .ticketMain h2 {
+  font-size: clamp(16px, 1.55vw, 21px);
+  padding-right: 52px;
+}
+
+.cardSize-compact .ticketCompany,
+.cardSize-compact .ticketData strong {
+  font-size: 11px;
+}
+
+.cardSize-compact .ticketDataGrid {
+  gap: 6px;
+}
+
+.cardSize-compact .ticketData {
+  padding-top: 5px;
+}
+
+.cardSize-compact .ticketStub {
+  gap: 7px;
+  padding: 10px 8px;
+}
+
+.cardSize-compact .barcode {
+  height: 38px;
+}
+
+.cardSize-compact .applyTicket {
+  min-height: 66px;
+}
+
+.cardSize-large {
+  gap: 22px;
+}
+
+.cardSize-large .ticketCard {
+  min-height: 228px;
+}
+
+.cardSize-large .ticketMain {
+  gap: 10px;
+  padding: 18px;
+}
+
+.cardSize-large .ticketMain h2 {
+  font-size: clamp(22px, 2.45vw, 32px);
+  padding-right: 72px;
+}
+
+.cardSize-large .ticketCompany,
+.cardSize-large .ticketData strong {
+  font-size: 14px;
+}
+
+.cardSize-large .ticketStub {
+  padding: 16px 12px;
+}
+
+.cardSize-large .barcode {
+  height: 66px;
+}
+
+.cardSize-large .applyTicket {
+  min-height: 104px;
+}
+
+.displayStyle-board .ticketCard {
+  min-height: 176px;
+}
+
+.displayStyle-board .ticketMain {
+  padding: 15px 16px;
+}
+
+.displayStyle-board .ticketMain h2 {
+  font-size: clamp(18px, 1.8vw, 25px);
+}
+
+.displayStyle-board .ticketStub {
+  padding: 0 16px 14px;
+}
+
+.cardSize-compact.displayStyle-board .ticketCard {
+  min-height: 148px;
+}
+
+.cardSize-compact.displayStyle-board .ticketMain {
+  padding: 12px 13px;
+}
+
+.cardSize-compact.displayStyle-board .ticketMain h2 {
+  font-size: clamp(16px, 1.55vw, 21px);
+}
+
+.cardSize-large.displayStyle-board .ticketCard {
+  min-height: 218px;
+}
+
+.cardSize-large.displayStyle-board .ticketMain h2 {
+  font-size: clamp(22px, 2.45vw, 32px);
+}
+
+.displayStyle-list .ticketCard {
+  grid-template-columns: minmax(0, 1fr) 10px minmax(112px, 15%);
+  min-height: 124px;
+}
+
+.displayStyle-list .ticketMain {
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.displayStyle-list .ticketMain h2 {
+  font-size: clamp(17px, 1.55vw, 22px);
+  padding-right: 58px;
+}
+
+.displayStyle-list .ticketDataGrid {
+  gap: 6px;
+}
+
+.displayStyle-list .ticketData strong {
+  font-size: 11px;
+}
+
+.displayStyle-list .ticketStub {
+  gap: 6px;
+  padding: 10px 8px;
+}
+
+.displayStyle-list .barcode {
+  height: 34px;
+}
+
+.displayStyle-list .applyTicket {
+  min-height: 54px;
+}
+
+.cardSize-compact.displayStyle-list .ticketCard {
+  grid-template-columns: minmax(0, 1fr) 8px minmax(92px, 14%);
+  min-height: 104px;
+}
+
+.cardSize-compact.displayStyle-list .ticketMain {
+  gap: 5px;
+  padding: 10px 12px;
+}
+
+.cardSize-compact.displayStyle-list .ticketMain h2 {
+  font-size: clamp(15px, 1.35vw, 19px);
+  padding-right: 48px;
+}
+
+.cardSize-compact.displayStyle-list .barcode {
+  height: 28px;
+}
+
+.cardSize-compact.displayStyle-list .applyTicket {
+  min-height: 44px;
+}
+
+.cardSize-large.displayStyle-list .ticketCard {
+  grid-template-columns: minmax(0, 1fr) 12px minmax(128px, 17%);
+  min-height: 154px;
+}
+
+.cardSize-large.displayStyle-list .ticketMain {
+  gap: 8px;
+  padding: 16px 18px;
+}
+
+.cardSize-large.displayStyle-list .ticketMain h2 {
+  font-size: clamp(20px, 2vw, 27px);
+}
+
+.cardSize-large.displayStyle-list .barcode {
+  height: 48px;
+}
+
+.cardSize-large.displayStyle-list .applyTicket {
+  min-height: 74px;
 }
 
 .ticketSkeleton {
@@ -2209,6 +2494,46 @@ select {
     transform: none;
   }
 
+  .displayStyle-list .ticketStub {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .displayStyle-list .reminderTicket,
+  .displayStyle-list .shareTicket,
+  .displayStyle-list .applyTicket {
+    font-size: 9px;
+    gap: 5px;
+    min-height: 36px;
+    padding: 0 8px;
+    width: 100%;
+  }
+
+  .displayStyle-list .reminderTicket svg,
+  .displayStyle-list .shareTicket svg,
+  .displayStyle-list .applyTicket svg {
+    height: 14px;
+    width: 14px;
+  }
+
+  .displayStyle-list .applyTicket {
+    grid-column: 1 / -1;
+  }
+
+  .cardSize-compact.displayStyle-list .ticketStub {
+    gap: 5px;
+    padding: 8px 9px 9px 14px;
+  }
+
+  .cardSize-compact.displayStyle-list .reminderTicket,
+  .cardSize-compact.displayStyle-list .shareTicket,
+  .cardSize-compact.displayStyle-list .applyTicket {
+    font-size: 8px;
+    min-height: 34px;
+    padding: 0 7px;
+  }
+
   .grid[data-columns="2"] .ticketMain,
   .grid[data-columns="3"] .ticketMain {
     padding: 11px;
@@ -2305,6 +2630,145 @@ select {
 
   .ticketStub,
   .displayStyle-board .ticketStub,
+  .displayStyle-list .ticketStub {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .grid {
+    gap: 10px;
+  }
+
+  .ticketMain {
+    gap: 6px;
+    padding: 11px;
+  }
+
+  .ticketMain h2 {
+    font-size: clamp(18px, 6.4vw, 24px);
+    line-height: 1;
+    padding-right: 54px;
+  }
+
+  .ticketCompany {
+    font-size: 11px;
+  }
+
+  .ticketDataGrid,
+  .displayStyle-list .ticketDataGrid {
+    gap: 6px;
+  }
+
+  .ticketData {
+    gap: 2px;
+    padding-top: 5px;
+  }
+
+  .ticketData strong {
+    font-size: 10px;
+  }
+
+  .cardSize-compact .ticketMain {
+    gap: 5px;
+    padding: 9px;
+  }
+
+  .cardSize-compact .ticketMain h2 {
+    font-size: clamp(16px, 5.8vw, 21px);
+    padding-right: 46px;
+  }
+
+  .cardSize-compact .ticketCompany,
+  .cardSize-compact .ticketData strong {
+    font-size: 9px;
+  }
+
+  .cardSize-large .ticketMain {
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .cardSize-large .ticketMain h2 {
+    font-size: clamp(21px, 7.2vw, 28px);
+    padding-right: 60px;
+  }
+
+  .cardSize-large .ticketCompany,
+  .cardSize-large .ticketData strong {
+    font-size: 12px;
+  }
+
+  .ticketStub {
+    gap: 6px;
+    padding: 10px 12px 12px;
+  }
+
+  .cardSize-compact .ticketStub {
+    gap: 5px;
+    padding: 8px 10px 10px;
+  }
+
+  .cardSize-large .ticketStub {
+    gap: 8px;
+    padding: 12px 14px 14px;
+  }
+
+  .barcode {
+    height: 28px;
+  }
+
+  .cardSize-compact .barcode {
+    height: 22px;
+  }
+
+  .cardSize-large .barcode {
+    height: 36px;
+  }
+
+  .applyTicket,
+  .reminderTicket,
+  .shareTicket {
+    min-height: 38px;
+  }
+
+  .displayStyle-list .ticketMain {
+    gap: 5px;
+    padding: 10px 11px 8px 14px;
+  }
+
+  .displayStyle-list .ticketMain h2 {
+    font-size: clamp(16px, 5.5vw, 21px);
+    padding-right: 50px;
+  }
+
+  .cardSize-compact.displayStyle-list .ticketMain h2 {
+    font-size: clamp(14px, 5vw, 18px);
+    padding-right: 42px;
+  }
+
+  .cardSize-large.displayStyle-list .ticketMain h2 {
+    font-size: clamp(19px, 6.6vw, 25px);
+    padding-right: 58px;
+  }
+
+  .grid[data-columns="2"] .ticketMain,
+  .grid[data-columns="3"] .ticketMain {
+    padding: 9px;
+  }
+
+  .grid[data-columns="2"] .ticketMain h2,
+  .grid[data-columns="3"] .ticketMain h2 {
+    font-size: clamp(15px, 4.8vw, 19px);
+    padding-right: 42px;
+  }
+}
+
+@media (max-width: 440px) {
+  .ticketMain h2 {
+    padding-right: 50px;
+  }
+
   .displayStyle-list .ticketStub {
     grid-template-columns: 1fr;
   }
