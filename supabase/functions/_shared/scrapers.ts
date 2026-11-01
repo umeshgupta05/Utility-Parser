@@ -1,12 +1,15 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { decryptMyCareerNetResponse, extractMyCareerNetDecoder, type MyCareerNetDecoder } from "./mycareernet-decoder.ts";
 
 type Kind = "JOB" | "CONTEST";
+type SourceKind = Kind | "MIXED";
 
 type Item = {
   id: string;
   title: string;
   url: string;
   raw: unknown;
+  kind?: Kind;
   company?: string;
   location?: string | null;
   jobType?: string | null;
@@ -21,7 +24,7 @@ type Item = {
 type Source = {
   label: string;
   id: string;
-  kind: Kind;
+  kind: SourceKind;
   prune?: boolean;
   fetchItems(): Promise<Item[]>;
 };
@@ -35,8 +38,12 @@ const unstopSearchUrl = env(
   "UNSTOP_SEARCH_URL",
   "https://unstop.com/api/public/opportunity/search-result?opportunity=jobs&job_type=in_office&job_timing=full_time&roles=software-development&usertype=fresher&oppstatus=open&page=1"
 );
-const unstopFeaturedUrl =
-  env("UNSTOP_FEATURED_URL", "https://unstop.com/api/public/opportunity/featured-opportunities");
+const unstopFeaturedDefaultUrl =
+  "https://unstop.com/api/public/opportunity/search-result?opportunity=competitions&oppstatus=open&page=1";
+const unstopFeaturedUrl = env("UNSTOP_FEATURED_URL", unstopFeaturedDefaultUrl);
+const unstopHackathonsDefaultUrl =
+  "https://unstop.com/api/public/opportunity/search-result?opportunity=hackathons&oppstatus=open&page=1";
+const unstopHackathonsUrl = env("UNSTOP_HACKATHONS_URL", unstopHackathonsDefaultUrl);
 const myCareerNetBaseUrl = env("MYCAREERNET_BASE_URL", "https://mycareernet.co");
 const myCareerNetTenantAlias = env("MYCAREERNET_TENANT_ALIAS", "mycareernet");
 const myCareerNetTenantConfigUrl =
@@ -122,9 +129,36 @@ async function json(url: string, init: RequestInit = {}, timeoutMs = 12_000) {
   try {
     const res = await fetch(url, { ...init, signal: controller.signal });
     if (!res.ok) throw new Error(`${url} returned ${res.status} ${res.statusText}`);
+    const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+    if (!contentType.includes("json")) {
+      const host = new URL(url).hostname;
+      throw new Error(`${host} returned unexpected content type "${contentType || "unknown"}"; expected JSON.`);
+    }
     return res.json();
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function text(url: string, init: RequestInit = {}, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    if (!res.ok) throw new Error(`${url} returned ${res.status} ${res.statusText}`);
+    return res.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function unstopFeed(url: string, fallbackUrl: string, init: RequestInit) {
+  try {
+    return await json(url, init);
+  } catch (error) {
+    if (url === fallbackUrl) throw error;
+    console.warn("Configured Unstop feed failed; retrying the current public search feed.");
+    return json(fallbackUrl, init);
   }
 }
 
@@ -209,25 +243,43 @@ export async function runSource(source: Source) {
   try {
     const items = await source.fetchItems();
     const client = db();
-    const rpc = source.kind === "JOB" ? "upsert_job_items" : "upsert_contest_items";
-    const rows = source.kind === "JOB" ? items.map((item) => toJobRow(item, source.id)) : items.map(toContestRow);
-    const { data, error } = await client.rpc(rpc, { items: rows });
-    if (error) throw error;
+    const itemKind = (item: Item) => item.kind ?? (source.kind === "MIXED" ? null : source.kind);
+    const jobs = items.filter((item) => itemKind(item) === "JOB");
+    const contests = items.filter((item) => itemKind(item) === "CONTEST");
+    if (jobs.length + contests.length !== items.length) {
+      throw new Error(`Source ${source.id} returned items without a valid item kind.`);
+    }
 
-    const inserted = Number(data?.[0]?.inserted ?? 0);
+    const insertedByKind: Record<Kind, number> = { JOB: 0, CONTEST: 0 };
+    for (const [kind, group] of [["JOB", jobs], ["CONTEST", contests]] as const) {
+      if (group.length === 0) continue;
+      const rpc = kind === "JOB" ? "upsert_job_items" : "upsert_contest_items";
+      const rows = kind === "JOB" ? group.map((item) => toJobRow(item, source.id)) : group.map(toContestRow);
+      const { data, error } = await client.rpc(rpc, { items: rows });
+      if (error) throw error;
+      insertedByKind[kind] += Number(data?.[0]?.inserted ?? 0);
+    }
+    const inserted = insertedByKind.JOB + insertedByKind.CONTEST;
+
     let pruned = 0;
     if (source.prune && items.length > 0) {
-      const pruneRpc = source.kind === "JOB" ? "prune_source_jobs" : "prune_source_contests";
-      const { data: pruneData, error: pruneError } = await client.rpc(pruneRpc, {
-        source: source.id,
-        keep_ids: items.map((item) => item.id)
-      });
-      if (pruneError) throw pruneError;
-      pruned = Number(pruneData ?? 0);
+      for (const [kind, group] of [["JOB", jobs], ["CONTEST", contests]] as const) {
+        if (group.length === 0) continue;
+        const pruneRpc = kind === "JOB" ? "prune_source_jobs" : "prune_source_contests";
+        const { data, error } = await client.rpc(pruneRpc, {
+          source: source.id,
+          keep_ids: group.map((item) => item.id)
+        });
+        if (error) throw error;
+        pruned += Number(data ?? 0);
+      }
     }
 
     await logRun(source.id, `success:${source.id}`, items.length, inserted);
-    await notifySource(source, items.slice(0, inserted));
+    if (insertedByKind.JOB > 0) await notifySource({ ...source, kind: "JOB" }, jobs.slice(0, insertedByKind.JOB));
+    if (insertedByKind.CONTEST > 0) {
+      await notifySource({ ...source, kind: "CONTEST" }, contests.slice(0, insertedByKind.CONTEST));
+    }
     return response({ sourceId: source.id, found: items.length, inserted, pruned });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -295,6 +347,60 @@ async function postJson(endpoint: string, body: unknown, headers: Record<string,
   );
 }
 
+async function fetchMyCareerNetDecoder(): Promise<MyCareerNetDecoder> {
+  const pageUrl = `${myCareerNetBaseUrl}/${myCareerNetTenantAlias}/contests`;
+  const page = await text(pageUrl, {
+    headers: { Accept: "text/html", "User-Agent": userAgent }
+  });
+  const mainScriptUrl = [...page.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)]
+    .map((match) => match[1])
+    .find((src) => /(?:^|\/)main[^/?]*\.js(?:[?#]|$)/i.test(src ?? ""));
+  if (!mainScriptUrl) throw new Error("MyCareerNet contest page did not expose its public application script.");
+
+  const assetBase = page.match(/<base\b[^>]*\bhref=["']([^"']+)["']/i)?.[1];
+  const bundleUrl = new URL(mainScriptUrl, assetBase ? new URL(assetBase, pageUrl) : pageUrl);
+  const bundle = await text(bundleUrl.toString(), {
+    headers: { Accept: "application/javascript,text/javascript,*/*", "User-Agent": userAgent }
+  });
+  return extractMyCareerNetDecoder(bundle);
+}
+
+async function fetchMyCareerNetContestPage(
+  token: string,
+  decoder: MyCareerNetDecoder,
+  page: number
+) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch(myCareerNetContestsUrl, {
+      method: "POST",
+      headers: {
+        Accept: "application/json,text/plain,*/*",
+        "Content-Type": "application/json",
+        Origin: myCareerNetBaseUrl,
+        Referer: `${myCareerNetBaseUrl}/${myCareerNetTenantAlias}/contests`,
+        "User-Agent": userAgent,
+        "app-name": decoder.appName.toLowerCase(),
+        "x-applma": "true",
+        Authorization: `bearer ${token}`
+      },
+      body: JSON.stringify({
+        pagingCriteria: { pageNumber: page, maxResults: 100 },
+        search: {},
+        isAppSummaryRequired: true
+      }),
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`MyCareerNet contests returned ${response.status} ${response.statusText}`);
+
+    const encrypted = (await response.text()).trim();
+    return asRecord(decryptMyCareerNetResponse(encrypted, decoder, myCareerNetTenantAlias, token));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchMyCareerNetBearerToken() {
   const tenantConfig = asRecord(
     await postJson(
@@ -317,26 +423,26 @@ async function fetchMyCareerNetBearerToken() {
 }
 
 async function fetchMyCareerNetContests() {
-  const token = await fetchMyCareerNetBearerToken();
-  const firstPage = asRecord(
-    await postJson(
-      myCareerNetContestsUrl,
-      { pagingCriteria: { pageNumber: 1, maxResults: 100 }, search: {} },
-      { Authorization: `bearer ${token}` }
-    )
-  );
-  const totalPages = asNumber(firstPage.totalPages) ?? 1;
-  const rows = [...findRows(asRecord(firstPage.data).hackthons)];
+  const [token, decoder] = await Promise.all([
+    fetchMyCareerNetBearerToken(),
+    fetchMyCareerNetDecoder()
+  ]);
+  const firstPage = await fetchMyCareerNetContestPage(token, decoder, 1);
+  const firstData = asRecord(firstPage.data);
+  const firstRows = firstData.hackthons ?? firstData.hackathons;
+  if (!Array.isArray(firstRows)) throw new Error("MyCareerNet contest response did not include a contest list.");
+  const totalPages = asNumber(firstPage.totalPages);
+  if (totalPages === null || !Number.isInteger(totalPages) || totalPages < 0 || totalPages > 100) {
+    throw new Error("MyCareerNet contest response included an invalid page count.");
+  }
+  const rows = [...firstRows];
 
   for (let page = 2; page <= totalPages; page += 1) {
-    const payload = asRecord(
-      await postJson(
-        myCareerNetContestsUrl,
-        { pagingCriteria: { pageNumber: page, maxResults: 100 }, search: {} },
-        { Authorization: `bearer ${token}` }
-      )
-    );
-    rows.push(...findRows(asRecord(payload.data).hackthons));
+    const payload = await fetchMyCareerNetContestPage(token, decoder, page);
+    const data = asRecord(payload.data);
+    const pageRows = data.hackthons ?? data.hackathons;
+    if (!Array.isArray(pageRows)) throw new Error(`MyCareerNet contest page ${page} did not include a contest list.`);
+    rows.push(...pageRows);
   }
 
   return rows;
@@ -346,9 +452,11 @@ function normalizeMyCareerNetContest(row: unknown): Item | null {
   const record = asRecord(row);
   const slug = asString(record.slug);
   const name = asString(record.name);
-  if (!slug || !name) return null;
+  const startTime = parseDate(record.startDateTime);
+  const endTime = parseDate(record.endDateTime);
+  if (!slug || !name || !startTime) return null;
   const timeline = (asString(record.timeLine) ?? "").toLowerCase();
-  if (timeline === "ended") return null;
+  if (endTime ? endTime.getTime() <= Date.now() : timeline === "ended") return null;
   const locations = Array.isArray(record.locations)
     ? record.locations.map((location) => asString(location)).filter((location): location is string => Boolean(location))
     : [];
@@ -358,12 +466,16 @@ function normalizeMyCareerNetContest(row: unknown): Item | null {
     id: `mycareernet:contest:${slug}`,
     title: myCareerNetTitle(name),
     url: `${myCareerNetBaseUrl}/${myCareerNetTenantAlias}/contests/${slug}`,
+    kind: "CONTEST",
+    site: "mycareernet",
+    startTime,
+    durationSec: endTime ? Math.max(0, Math.round((endTime.getTime() - startTime.getTime()) / 1000)) : 0,
     company: asString(record.company) ?? "MyCareerNet",
     location: locations.length > 0 ? locations.join(", ") : mode ?? "Online",
     jobType: `Contest: ${category}`,
     timing: timeline ? timeline[0].toUpperCase() + timeline.slice(1) : mode,
-    postedAt: parseDate(record.startDateTime),
-    deadline: parseDate(record.endDateTime),
+    postedAt: startTime,
+    deadline: endTime,
     raw: { ...record, normalized_kind: "mycareernet_contest" }
   };
 }
@@ -493,13 +605,16 @@ export const sources: Record<string, Source> = {
   mycareernet: {
     label: "MyCareerNet",
     id: "mycareernet",
-    kind: "JOB",
+    kind: "MIXED",
     async fetchItems() {
       const [jobRows, contestRows] = await Promise.all([
         myCareerNetJobsUrl ? findRows(await json(myCareerNetJobsUrl, { headers: { Accept: "application/json", "User-Agent": userAgent } })) : Promise.resolve([]),
         fetchMyCareerNetContests()
       ]);
-      const jobs = jobRows.map((row) => normalizeJob(row, "mycareernet", "MyCareerNet")).filter((job): job is Item => Boolean(job));
+      const jobs = jobRows
+        .map((row) => normalizeJob(row, "mycareernet", "MyCareerNet"))
+        .filter((job): job is Item => Boolean(job))
+        .map((job) => ({ ...job, kind: "JOB" as const }));
       const contests = contestRows.map((row) => normalizeMyCareerNetContest(row)).filter((job): job is Item => Boolean(job));
       return [...jobs, ...contests];
     }
@@ -509,12 +624,17 @@ export const sources: Record<string, Source> = {
     id: "unstop_featured",
     kind: "CONTEST",
     async fetchItems() {
-      return findRows(await json(unstopFeaturedUrl, { headers: { Accept: "application/json,text/plain,*/*", Referer: "https://unstop.com/", "User-Agent": userAgent } })).map((row) => {
+      const request = { headers: { Accept: "application/json,text/plain,*/*", Referer: "https://unstop.com/", "User-Agent": userAgent } };
+      const [competitionPayload, hackathonPayload] = await Promise.all([
+        unstopFeed(unstopFeaturedUrl, unstopFeaturedDefaultUrl, request),
+        unstopFeed(unstopHackathonsUrl, unstopHackathonsDefaultUrl, request)
+      ]);
+      return [...findRows(competitionPayload), ...findRows(hackathonPayload)].map((row) => {
         const record = asRecord(row);
         const id = asString(record.featured_id) ?? asString(record.id) ?? (record.id == null ? null : String(record.id));
         const title = asString(record.featured_title) ?? asString(record.title) ?? asString(record.name);
         const publicUrl = asString(record.public_url);
-        const url = asString(record.url) ?? (publicUrl ? `https://unstop.com/${publicUrl.replace(/^\/+/, "")}` : null);
+        const url = asString(record.url) ?? asString(record.seo_url) ?? (publicUrl ? `https://unstop.com/${publicUrl.replace(/^\/+/, "")}` : null);
         const startTime = parseDate(record.start_date) ?? parseDate(asRecord(record.regnRequirements).start_regn_dt) ?? new Date();
         const end = parseDate(record.end_date) ?? parseDate(asRecord(record.regnRequirements).end_regn_dt);
         if (!id || !title || !url) return null;

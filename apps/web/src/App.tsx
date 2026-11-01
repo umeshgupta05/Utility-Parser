@@ -57,12 +57,13 @@ type VisibleNewCount = {
 };
 
 type ScrapeRun = {
-    status: string;
-    startedAt: string;
-    endedAt: string | null;
-    jobsFound: number;
-    jobsInserted: number;
-    errorMessage: string | null;
+  sourceId: string | null;
+  status: string;
+  startedAt: string;
+  endedAt: string | null;
+  jobsFound: number;
+  jobsInserted: number;
+  errorMessage: string | null;
 };
 
 type JobsResponse = {
@@ -85,6 +86,7 @@ type Health = {
   ok: boolean;
   jobCount: number;
   lastRun: ScrapeRun | null;
+  lastSuccessfulRun: ScrapeRun | null;
 };
 
 type User = {
@@ -131,6 +133,7 @@ type DisplaySettings = {
 
 const NEW_COUNT_VISIBLE_MS = 5 * 60 * 1000;
 const CINEMATIC_SCRUB_END_PROGRESS = 0.86;
+const DATA_PAGE_SIZE = 500;
 
 type TicketItem =
   | {
@@ -280,6 +283,7 @@ function formatSiteLabel(site: string) {
     codeforces: "Codeforces",
     hackerearth_challenges: "HackerEarth Challenges",
     leetcode: "LeetCode",
+    mycareernet: "MyCareerNet",
     unstop_featured: "Unstop Featured"
   };
   return labels[site] ?? site.replaceAll("_", " ").replaceAll("-", " ");
@@ -292,6 +296,7 @@ function displayRunStatus(status: string) {
 function mapRun(row: any): ScrapeRun | null {
   if (!row) return null;
   return {
+    sourceId: row.source_id ?? row.sourceId ?? null,
     status: row.status,
     startedAt: row.started_at ?? row.startedAt,
     endedAt: row.ended_at ?? row.endedAt ?? null,
@@ -644,8 +649,11 @@ function DeparturesHeader({
           <span>{lastSynced}</span>
           {syncFailed ? (
             <b>
-              Last sync failed
-              {health?.lastRun?.endedAt ? ` - cached from ${formatRelative(health.lastRun.endedAt)}` : ""}
+              Latest sync failed
+              {health?.lastRun?.sourceId
+                ? ` for ${health.lastRun.sourceId.replaceAll("_", " ")}`
+                : ""}
+              . Showing data from the last successful sync.
             </b>
           ) : null}
         </div>
@@ -1268,22 +1276,25 @@ export function App() {
   };
 
   const loadStatus = async () => {
-    const [sourceResult, jobCountResult, contestCountResult, runResult] = await Promise.all([
+    const [sourceResult, jobCountResult, contestCountResult, runResult, successfulRunResult] = await Promise.all([
       supabase.from("source_with_status").select("*").order("type").order("label"),
       supabase.from("job").select("id", { count: "exact", head: true }),
       supabase.from("contest").select("id", { count: "exact", head: true }),
-      supabase.from("scrape_run").select("*").order("started_at", { ascending: false }).limit(1).maybeSingle()
+      supabase.from("scrape_run").select("*").order("started_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("scrape_run").select("*").like("status", "success:%").order("started_at", { ascending: false }).limit(1).maybeSingle()
     ]);
     if (sourceResult.error) throw sourceResult.error;
     if (jobCountResult.error) throw jobCountResult.error;
     if (contestCountResult.error) throw contestCountResult.error;
     if (runResult.error) throw runResult.error;
+    if (successfulRunResult.error) throw successfulRunResult.error;
 
     setSources((sourceResult.data ?? []).map(mapSource));
     setHealth({
       ok: true,
       jobCount: jobCountResult.count ?? 0,
-      lastRun: mapRun(runResult.data)
+      lastRun: mapRun(runResult.data),
+      lastSuccessfulRun: mapRun(successfulRunResult.data)
     });
   };
 
@@ -1327,27 +1338,44 @@ export function App() {
   };
 
   const loadJobs = async () => {
-    let query = supabase.from("job").select("*").limit(100);
-    if (sortBy === "new_first") query = query.order("is_new", { ascending: false }).order("first_seen_at", { ascending: false });
-    else if (sortBy === "posted_newest") query = query.order("posted_at", { ascending: false, nullsFirst: false });
-    else if (sortBy === "posted_oldest") query = query.order("posted_at", { ascending: true, nullsFirst: false });
-    else if (sortBy === "deadline") query = query.order("deadline", { ascending: true, nullsFirst: false });
-    else if (sortBy === "deadline_latest") query = query.order("deadline", { ascending: false, nullsFirst: false });
-    else if (sortBy === "company_az") query = query.order("company", { ascending: true }).order("title");
-    else if (sortBy === "company_za") query = query.order("company", { ascending: false }).order("title");
-    else if (sortBy === "title_az") query = query.order("title", { ascending: true }).order("company");
-    else if (sortBy === "title_za") query = query.order("title", { ascending: false }).order("company");
-    else query = query.order("first_seen_at", { ascending: false });
+    const activeJobs: Job[] = [];
+    for (let offset = 0; ; offset += DATA_PAGE_SIZE) {
+      let query = supabase.from("job").select("*");
+      if (sortBy === "new_first") query = query.order("is_new", { ascending: false }).order("first_seen_at", { ascending: false });
+      else if (sortBy === "posted_newest") query = query.order("posted_at", { ascending: false, nullsFirst: false });
+      else if (sortBy === "posted_oldest") query = query.order("posted_at", { ascending: true, nullsFirst: false });
+      else if (sortBy === "deadline") query = query.order("deadline", { ascending: true, nullsFirst: false });
+      else if (sortBy === "deadline_latest") query = query.order("deadline", { ascending: false, nullsFirst: false });
+      else if (sortBy === "company_az") query = query.order("company", { ascending: true }).order("title");
+      else if (sortBy === "company_za") query = query.order("company", { ascending: false }).order("title");
+      else if (sortBy === "title_az") query = query.order("title", { ascending: true }).order("company");
+      else if (sortBy === "title_za") query = query.order("title", { ascending: false }).order("company");
+      else query = query.order("first_seen_at", { ascending: false });
 
-    const { data, error } = await query;
-    if (error) throw error;
-    setJobs((data ?? []).map(mapJob).filter((job) => !isJobExpired(job)));
+      const { data, error } = await query.order("id").range(offset, offset + DATA_PAGE_SIZE - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      activeJobs.push(...page.map(mapJob).filter((job) => !isJobExpired(job)));
+      if (page.length < DATA_PAGE_SIZE) break;
+    }
+    setJobs(activeJobs);
   };
 
   const loadContests = async () => {
-    const { data, error } = await supabase.from("contest").select("*").order("start_time", { ascending: true }).limit(100);
-    if (error) throw error;
-    setContests((data ?? []).map(mapContest).filter((contest) => !isContestEnded(contest)));
+    const activeContests: Contest[] = [];
+    for (let offset = 0; ; offset += DATA_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("contest")
+        .select("*")
+        .order("start_time", { ascending: true })
+        .order("id")
+        .range(offset, offset + DATA_PAGE_SIZE - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      activeContests.push(...page.map(mapContest).filter((contest) => !isContestEnded(contest)));
+      if (page.length < DATA_PAGE_SIZE) break;
+    }
+    setContests(activeContests);
   };
 
   const refreshAll = async (showRefreshing = false) => {
@@ -1495,14 +1523,14 @@ export function App() {
   }, []);
 
   const lastSynced = useMemo(() => {
-    if (!health?.lastRun?.endedAt) return "Never synced";
-    return `Synced ${formatRelative(health.lastRun.endedAt)}`;
+    if (!health?.lastSuccessfulRun?.endedAt) return "No successful sync yet";
+    return `Last successful sync ${formatRelative(health.lastSuccessfulRun.endedAt)}`;
   }, [health]);
 
   const availableSources = useMemo(() => {
     const visibleSources = sources.filter((source) => source.enabled && userPreferences[source.id]?.visible !== false);
-    if (viewMode === "jobs") return visibleSources.filter((source) => source.type === "JOB");
-    if (viewMode === "contests") return visibleSources.filter((source) => source.type === "CONTEST");
+    if (viewMode === "jobs") return visibleSources.filter((source) => source.type === "JOB" || source.type === "MIXED");
+    if (viewMode === "contests") return visibleSources.filter((source) => source.type === "CONTEST" || source.type === "MIXED");
     return visibleSources;
   }, [sources, userPreferences, viewMode]);
 
@@ -1695,7 +1723,19 @@ export function App() {
           ))}
         </section>
       ) : tickets.length === 0 ? (
-        <section className="message">NO TICKETS MATCH THAT SEARCH. TRY A DIFFERENT ROUTE.</section>
+        <section className="message">
+          <p>NO TICKETS MATCH THE CURRENT FILTERS.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setSelectedSourceId(null);
+              setViewMode("all");
+            }}
+          >
+            CLEAR FILTERS AND SHOW ALL SOURCES
+          </button>
+        </section>
       ) : (
         <section className={gridClassName} data-columns={displaySettings.columns}>
           {tickets.map((item) => (

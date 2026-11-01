@@ -29,7 +29,7 @@ Required Edge Function secrets:
 
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
-- optional connector overrides such as `UNSTOP_USER_AGENT`, `MYCAREERNET_JOBS_URL`, etc.
+- optional connector overrides such as `UNSTOP_USER_AGENT`, `UNSTOP_FEATURED_URL`, `UNSTOP_HACKATHONS_URL`, and `MYCAREERNET_JOBS_URL`
 
 Cron expects Supabase Vault secrets named:
 
@@ -78,8 +78,8 @@ pnpm --filter @unstop-agent/web dev
 ## Sources
 
 - Unstop jobs use the public search API.
-- Unstop Featured uses the public homepage featured endpoint.
-- MyCareerNet uses the tenant-config plus anonymous bearer-token contest flow, with optional job JSON via `MYCAREERNET_JOBS_URL`.
+- Unstop Featured uses Unstop's public competitions and hackathons search feeds.
+- MyCareerNet contests use the public tenant-config and bearer-token flow, decrypt the site's client-encrypted response, and are stored as contests; optional job JSON is configured with `MYCAREERNET_JOBS_URL`.
 - HackerEarth Jobs uses India-scoped public community jobs endpoints.
 - HackerEarth Challenges uses the public challenges feed.
 - Codeforces uses the official public API.

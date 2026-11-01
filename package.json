@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @unstop-agent/web dev",
     "build": "pnpm --filter @unstop-agent/web build",
     "typecheck": "pnpm --filter @unstop-agent/web typecheck",
+    "test": "vitest run",
     "supabase:push": "supabase db push",
     "supabase:deploy": "supabase functions deploy unstop mycareernet hackerearth_jobs hackerearth_challenges codeforces leetcode codechef atcoder unstop_featured send-contest-reminders"
   },
@@ -16,6 +17,7 @@
     ]
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
   }
 }

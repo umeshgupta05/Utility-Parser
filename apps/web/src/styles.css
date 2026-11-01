@@ -1476,6 +1476,22 @@ select {
   text-align: center;
 }
 
+.message p {
+  margin: 0 0 14px;
+}
+
+.message button {
+  background: var(--brass);
+  border: 0;
+  border-radius: 999px;
+  color: var(--paper);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
 /* Final display sizing layer: keeps card size presets consistent across styles. */
 .grid {
   gap: 18px;
