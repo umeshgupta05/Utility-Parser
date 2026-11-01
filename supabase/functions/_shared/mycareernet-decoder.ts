@@ -40,7 +40,7 @@ export function decryptMyCareerNetResponse(
   const key = createHash("md5").update(keyMaterial).digest();
   let decrypted: string;
   try {
-    const decipher = createDecipheriv("aes-128-ecb", key, null);
+    const decipher = createDecipheriv("aes-128-ecb", key, new Uint8Array(0));
     decrypted = decipher.update(encrypted, "base64", "utf8") + decipher.final("utf8");
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown crypto error";

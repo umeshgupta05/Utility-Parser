@@ -29,7 +29,7 @@ describe("MyCareerNet public contest decoder", () => {
       decoder.tokenSeparator +
       token;
     const key = createHash("md5").update(keyMaterial).digest();
-    const cipher = createCipheriv("aes-128-ecb", key, null);
+    const cipher = createCipheriv("aes-128-ecb", key, new Uint8Array(0));
     const encrypted =
       cipher.update(JSON.stringify({ data: { hackthons: [{ slug: "sample", name: "Sample contest" }] } }), "utf8", "base64") +
       cipher.final("base64");
