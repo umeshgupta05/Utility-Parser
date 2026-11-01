@@ -42,8 +42,9 @@ export function decryptMyCareerNetResponse(
   try {
     const decipher = createDecipheriv("aes-128-ecb", key, null);
     decrypted = decipher.update(encrypted, "base64", "utf8") + decipher.final("utf8");
-  } catch {
-    throw new Error("MyCareerNet contest response could not be decrypted with its public client contract.");
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown crypto error";
+    throw new Error(`MyCareerNet contest response could not be decrypted with its public client contract: ${reason}`);
   }
 
   try {
